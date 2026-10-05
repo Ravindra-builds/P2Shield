@@ -38,14 +38,27 @@ chrome.commands.onCommand.addListener((command, tab) => {
   });
 });
 
+let creating: Promise<void> | null = null;
+
+/** Single-flight: warm-up, prefetch and label requests can arrive together. */
 async function ensureOffscreen(): Promise<void> {
   const existing = await chrome.runtime.getContexts({ contextTypes: ['OFFSCREEN_DOCUMENT' as chrome.runtime.ContextType] });
   if (existing.length) return;
-  await chrome.offscreen.createDocument({
-    url: 'offscreen.html',
-    reasons: ['DOM_PARSER' as chrome.offscreen.Reason],
-    justification: "Run Chrome's on-device Prompt API, which is not available in service workers.",
-  });
+  if (!creating) {
+    creating = chrome.offscreen
+      .createDocument({
+        url: 'offscreen.html',
+        reasons: ['DOM_PARSER' as chrome.offscreen.Reason],
+        justification: "Run Chrome's on-device Prompt API, which is not available in service workers.",
+      })
+      .catch((e: unknown) => {
+        if (!/single offscreen/i.test(String((e as Error)?.message ?? e))) throw e;
+      })
+      .finally(() => {
+        creating = null;
+      });
+  }
+  await creating;
 }
 
 async function toOffscreen<T>(payload: Record<string, unknown>): Promise<T> {
@@ -69,11 +82,17 @@ chrome.runtime.onMessage.addListener((msg: Msg & { target?: string }, _sender, s
       .catch((e) => sendResponse({ ok: false, error: String(e?.message ?? e) } satisfies SmartLabelReply));
     return true;
   }
-  if (msg.type === 'SMART_STATUS') {
-    toOffscreen<{ state: SmartState }>({ type: 'SMART_STATUS' })
-      .then(sendResponse)
+  if (msg.type === 'SMART_STATUS' || msg.type === 'SMART_WARM') {
+    toOffscreen<{ state: SmartState }>({ type: msg.type })
+      .then((r) => sendResponse(r ?? { state: 'unsupported' }))
       .catch(() => sendResponse({ state: 'unsupported' }));
     return true;
+  }
+  if (msg.type === 'SMART_PREFETCH') {
+    // Fire and forget: the offscreen document labels the text in the background and caches it.
+    toOffscreen<unknown>({ type: 'SMART_PREFETCH', text: msg.text }).catch(() => undefined);
+    sendResponse({ ok: true });
+    return false;
   }
   if (msg.type === 'AUDIT') {
     // Metadata only. The content script never includes raw text in this entry.

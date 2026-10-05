@@ -1,4 +1,5 @@
 import { detectHeuristics, detectRules } from './detectors';
+import { detectFields } from './fields';
 import { getBuiltinProfile } from './policy';
 import { resolveOverlaps } from './resolve';
 import { evaluate, type Override } from './sanitize';
@@ -10,7 +11,7 @@ const MAX_CHARS = 400_000;
 /** Rules + heuristics (Basic mode). Deterministic and fast. */
 export function detectAll(text: string): Detection[] {
   const t = text.length > MAX_CHARS ? text.slice(0, MAX_CHARS) : text;
-  return resolveOverlaps([...detectRules(t), ...detectHeuristics(t)]);
+  return resolveOverlaps([...detectRules(t), ...detectFields(t), ...detectHeuristics(t)]);
 }
 
 export interface AnalyzeOptions {

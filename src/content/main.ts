@@ -13,6 +13,7 @@ import {
   type Msg,
   type Settings,
   type SmartLabelReply,
+  type SmartState,
 } from '../shared/settings';
 import {
   anchorBox,
@@ -55,6 +56,8 @@ interface Session {
   /** True while the box holds the protected text. Undo turns it off, so the shield can protect again. */
   active: boolean;
   smartNote?: string;
+  /** Smart mode answer still on its way; cleared by Undo / toggles so a late answer can't overwrite them. */
+  pendingSmart?: boolean;
 }
 
 async function start(): Promise<void> {
@@ -92,8 +95,14 @@ async function start(): Promise<void> {
   try {
     chrome.storage.onChanged.addListener(() => {
       void loadSettings().then((s) => {
+        const switchedToSmart = s.mode === 'smart' && settings.mode !== 'smart';
         settings = s;
         profile = activeProfile(s);
+        if (switchedToSmart) {
+          warmedAt = 0;
+          smartState = 'unknown';
+          if (current) warmSmart();
+        }
         if (!enabled()) detach();
         else scheduleScan();
       });
@@ -113,6 +122,7 @@ async function start(): Promise<void> {
     ui.setBadge(0, null);
     reposition();
     scheduleScan();
+    warmSmart();
   }
 
   function detach(): void {
@@ -208,21 +218,75 @@ async function start(): Promise<void> {
     } catch {
       ui.setBadge(0, null);
     }
+    schedulePrefetch(text);
+  }
+
+  // ---- Smart mode: warm-up and prefetch ----------------------------------------
+  /** Last known model state. Unknown until the first warm-up reply. */
+  let smartState: SmartState | 'unknown' = 'unknown';
+  let warmedAt = 0;
+  let prefetchTimer: number | undefined;
+  let lastPrefetched = '';
+
+  function smartNoteFor(state: SmartState | 'unknown'): string {
+    if (state === 'downloadable' || state === 'downloading') return 'On-device AI not downloaded yet, used Basic mode';
+    return 'On-device AI unavailable, used Basic mode';
+  }
+
+  /** Load the model as soon as a chat box is focused, so the first click doesn't pay for it. */
+  function warmSmart(): void {
+    if (settings.mode !== 'smart' || Date.now() - warmedAt < 60000) return;
+    warmedAt = Date.now();
+    try {
+      void chrome.runtime
+        .sendMessage({ type: 'SMART_WARM' } satisfies Msg)
+        .then((r: { state?: SmartState } | undefined) => {
+          if (r?.state) smartState = r.state;
+        })
+        .catch(() => undefined);
+    } catch {
+      /* extension context invalidated */
+    }
+  }
+
+  /** Label the text in the background while the user pauses, so clicking the shield is usually instant. */
+  function schedulePrefetch(text: string): void {
+    window.clearTimeout(prefetchTimer);
+    if (settings.mode !== 'smart' || smartState !== 'available') return;
+    if (text.trim().length < 12 || text.length > 20000 || text === lastPrefetched) return;
+    prefetchTimer = window.setTimeout(() => {
+      lastPrefetched = text;
+      try {
+        void chrome.runtime.sendMessage({ type: 'SMART_PREFETCH', text } satisfies Msg).catch(() => undefined);
+      } catch {
+        /* ignore */
+      }
+    }, 900);
   }
 
   // ---- protect ---------------------------------------------------------------
   async function askSmart(text: string): Promise<{ ai?: AiEntity[]; note?: string }> {
     if (settings.mode !== 'smart') return {};
+    if (smartState !== 'unknown' && smartState !== 'available') return { note: smartNoteFor(smartState) };
     try {
       const reply = (await chrome.runtime.sendMessage({ type: 'SMART_LABEL', text } satisfies Msg)) as
         | SmartLabelReply
         | undefined;
-      if (reply && reply.ok) return { ai: reply.entities };
-      return { note: 'On-device AI unavailable, used Basic mode' };
+      if (reply && reply.ok) {
+        smartState = 'available';
+        return { ai: reply.entities };
+      }
+      const m = reply && !reply.ok ? /^model-(\w+)/.exec(reply.error) : null;
+      if (m) smartState = m[1] as SmartState;
+      if (reply && !reply.ok && /timeout/.test(reply.error)) return { note: 'On-device AI was too slow, used Basic mode' };
+      return { note: smartNoteFor(smartState) };
     } catch {
-      return { note: 'On-device AI unavailable, used Basic mode' };
+      return { note: smartNoteFor(smartState) };
     }
   }
+
+  /** How long a click waits for the model before protecting with the rules and refining afterwards. */
+  const SMART_GRACE_MS = 700;
 
   function chipFor(s: Session): void {
     const applied = s.result.findings.filter((f) => f.applied).length;
@@ -288,7 +352,21 @@ async function start(): Promise<void> {
         return;
       }
 
-      const { ai, note } = await askSmart(text);
+      // Smart mode never makes the user wait: if the model hasn't answered within a short grace period
+      // (cache hits answer in milliseconds), protect with the rules now and refine when it answers.
+      let ai: AiEntity[] | undefined;
+      let note: string | undefined;
+      let pending: Promise<{ ai?: AiEntity[]; note?: string }> | null = null;
+      if (settings.mode === 'smart') {
+        const asked = askSmart(text);
+        const quick = await Promise.race([asked, new Promise<null>((r) => window.setTimeout(() => r(null), SMART_GRACE_MS))]);
+        if (quick) ({ ai, note } = quick);
+        else {
+          pending = asked;
+          note = 'On-device AI is reviewing…';
+        }
+      }
+
       const { result, detections } = analyze(text, { profile, ai });
       const applied = result.findings.filter((f) => f.applied);
 
@@ -306,6 +384,10 @@ async function start(): Promise<void> {
       };
 
       if (!applied.length) {
+        if (pending) {
+          session.pendingSmart = true;
+          void refineWithSmart(session, pending);
+        }
         ui.setResult(result, profile.name);
         const held = result.findings.length;
         ui.showChip(
@@ -331,6 +413,10 @@ async function start(): Promise<void> {
       audit(result);
       if (ok) {
         chipFor(session);
+        if (pending) {
+          session.pendingSmart = true;
+          void refineWithSmart(session, pending);
+        }
       } else {
         const copied = await copyToClipboard(result.safeText);
         ui.setResult(result, profile.name);
@@ -352,12 +438,55 @@ async function start(): Promise<void> {
     }
   }
 
+  /**
+   * Apply the model's labels once they arrive, but only if the box still holds what we left in it
+   * (the user hasn't typed, undone, or toggled anything in the meantime).
+   */
+  async function refineWithSmart(s: Session, pending: Promise<{ ai?: AiEntity[]; note?: string }>): Promise<void> {
+    const { ai, note } = await pending;
+    if (session !== s || !s.pendingSmart) return;
+    s.pendingSmart = false;
+    const editor = liveEditor(s.editor);
+    if (!editor) return;
+    const expected = s.active ? s.lastSafe : s.original;
+    if (normalizeForCompare(getText(editor)) !== normalizeForCompare(expected)) return;
+
+    const before = s.result.findings.filter((f) => f.applied).length;
+    if (!ai) {
+      s.smartNote = note;
+      if (before) chipFor(s);
+      else ui.showChip({ message: 'No sensitive data found.', sub: note }, 5000);
+      return;
+    }
+    const { result, detections } = analyze(s.original, { profile, ai, overrides: s.overrides });
+    const after = result.findings.filter((f) => f.applied).length;
+    const extra = after - before;
+    if (result.safeText !== expected) {
+      const ok = await setText(editor, result.safeText);
+      quietUntil = Date.now() + 800;
+      repositionAfterEdit();
+      if (!ok) return; // keep the rule-based protection that is already in the box
+      s.lastSafe = result.safeText;
+      s.active = true;
+    }
+    s.detections = detections;
+    s.result = result;
+    s.mode = 'smart';
+    s.smartNote = extra > 0 ? `AI protected ${extra} more` : extra < 0 ? 'AI kept details needed for your question' : 'AI found nothing extra';
+    if (after) chipFor(s);
+    else {
+      ui.setResult(result, profile.name);
+      ui.showChip({ message: 'No sensitive data found.', sub: 'Smart mode · analysed on this device' }, 5000);
+    }
+  }
+
   async function undo(): Promise<void> {
     if (!session) {
       ui.showChip({ message: 'Nothing to undo.' }, 2500);
       return;
     }
     const s = session;
+    s.pendingSmart = false;
     ui.closePanel();
     const editor = liveEditor(s.editor);
     let ok = false;
@@ -395,6 +524,7 @@ async function start(): Promise<void> {
       ui.showChip({ message: 'The text changed since it was protected. Click the shield again to re-scan.' }, 5000);
       return;
     }
+    session.pendingSmart = false;
     session.overrides[id] = protectIt ? 'PROTECT' : 'KEEP';
     const result = evaluate(session.original, session.detections, profile, session.mode, session.overrides);
     const ok = await setText(editor, result.safeText);

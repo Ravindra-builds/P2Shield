@@ -12,7 +12,7 @@ Built for the hackathon problem **"Pre-LLM Privacy Firewall for Sensitive Data P
 
 | Problem statement asks for | How it is covered |
 |---|---|
-| Detect names, phones, emails, financial data, credentials, health records, confidential data | Rule detectors with checksums (Luhn, Verhoeff, IBAN mod-97), credential patterns, and heuristics for names, medical terms, amounts, confidential markers. Optional on-device AI (Smart mode) for context. |
+| Detect names, phones, emails, financial data, credentials, health records, confidential data | Rule detectors with checksums (Luhn, Verhoeff, IBAN mod-97, ABA routing, SSN structure, CPF, NHS, SIN), 40+ credential formats, a structured-field detector that reads the field name (`"routing_num": ...`, `DB_PASSWORD=...`, `| CVV | 482 |`), and heuristics for names, medical terms, amounts and confidential markers. Optional on-device AI (Smart mode) for context. |
 | Operate before the LLM receives the input | The text is rewritten inside the chat box before you send it. |
 | Redaction, anonymization, tokenization | Per-type actions: keep, mask, tokenize (`[PERSON_1]`), redact (`[REDACTED_PHONE]`), generalize (`27` becomes `20-30`, `₹12,50,000` becomes `approx. ₹13 lakh`, a city becomes its state), remove secret. |
 | Configurable privacy policies | Four built-in profiles (Personal, Healthcare, Finance, Enterprise), an editable rules table, import/export as JSON, and organization-pushed policy through Chrome managed storage. |
@@ -20,6 +20,17 @@ Built for the hackathon problem **"Pre-LLM Privacy Firewall for Sensitive Data P
 | A safe version of the input | Written into the box, with Undo and a per-item review panel. |
 
 Passwords, API keys, tokens, private keys and credentials in URLs are **always removed**, in every profile. A custom or imported profile cannot change that.
+
+### What it understands
+
+Prompts rarely look like neat sentences, so the engine reads the shape of the text as well as the values:
+
+- **Structured data:** JSON, JS/Python objects, YAML, `.env` / INI / `export`, HTTP headers and cookies, XML, function arguments (`connect(password="...")`), CLI flags (`--password=...`, `curl -u user:pass`), CSV / TSV / Markdown tables (by column header or as key/value rows), and prose ("my routing number is ...").
+- **Field names in any style:** `api_token`, `apiToken`, `X-Api-Key`, `card_token_raw`, `routing_num`, `emergency_phone`. The field name proposes a type and the value's shape confirms it, so `"card_token_raw": "5412..."` is a card while `"card_token_raw": "tok_9f..."` is a secret. Descriptive keys (`token_type`, `password_min_length`) and code references (`os.environ[...]`, `getToken()`) are left alone.
+- **Identifiers worldwide:** Aadhaar, PAN, GSTIN, IFSC, UPI, US SSN and ABA routing numbers, UK NINO / NHS / sort codes, Canadian SIN, Brazilian CPF, Emirates ID, Singapore NRIC, SWIFT/BIC, IBAN, passports, driving licences, tax IDs, medical record and insurance numbers, vehicle registrations, crypto wallets and seed phrases.
+- **Infrastructure:** internal hostnames and URLs (`internal-vault.net`, `db.internal.acme.com`, `*.corp`), webhook URLs, cloud ARNs and account IDs, IPv4 / IPv6 / MAC addresses, user names inside file paths.
+
+Numbers are never matched inside a longer token (the `7890123456789` inside `bearer_secret_xyz7890123456789` is part of the secret, not a card). When a broad span such as an address contains a more specific item such as a card, both are kept.
 
 ## Install (load unpacked)
 
@@ -54,7 +65,17 @@ The settings page has a **Playground** where you can paste text or drop a `.txt`
 
 **Basic mode** (default) uses rules and heuristics. It works in every Chromium browser and needs nothing installed.
 
-**Smart mode** adds Chrome's built-in on-device model (Gemini Nano, through the Prompt API). It helps with context: for "what should I ask my doctor about diabetes", it can tell that the diagnosis is needed while the name and ID are not, so profiles with *keep if needed* (Finance, Enterprise) keep the diagnosis and protect the rest. If the model is missing, slow (15 s) or returns something invalid, the extension falls back to Basic mode and tells you.
+**Smart mode** adds Chrome's built-in on-device model (Gemini Nano, through the Prompt API). It runs on top of the rules, never instead of them, so it catches at least everything Basic mode catches. It adds context: for "what should I ask my doctor about diabetes", it can tell that the diagnosis is needed while the name and ID are not, so profiles with *keep if needed* (Finance, Enterprise) keep the diagnosis and protect the rest. It also picks up names, client and project names, and numbers written in unusual ways that the rules can't see.
+
+Smart mode is built so you don't wait for it:
+
+- The model is loaded when you focus a chat box, not when you click.
+- While you pause typing, the text is labelled in the background and cached, so the click usually finds the answer ready.
+- If the model hasn't answered within 0.7 s of the click, the rules protect the text immediately and the model's extra findings are applied when they arrive (only if you haven't edited, undone or toggled anything in the meantime). The note says "On-device AI is reviewing…" and then what it added.
+- Values the rules already found are replaced by placeholders before the text reaches the model, so the model has less to read, nothing to repeat, and never sees your secrets. The output format is minimal (no explanations per item), which is where most of the model's time goes.
+- A request for text you have since changed is cancelled.
+
+If the model is missing, too slow (20 s) or returns something invalid, the extension keeps the Basic result and tells you.
 
 Important design rules for Smart mode:
 
@@ -70,10 +91,12 @@ Requirements (from Chrome's documentation): desktop Chrome on Windows 10/11, mac
 ```
 chat box ──► content script ──► core engine (pure TypeScript, no DOM)
                                    │
-                  rule detectors ──┤  email, phone, cards (Luhn), Aadhaar (Verhoeff), PAN, IFSC,
-                                   │  bank account, IBAN, UPI, passport, IP, DOB, age, employee ID,
-                                   │  API keys, JWT, private keys, passwords, secrets in URLs
-                heuristic layer ───┤  names, medical, amounts, confidential markers, places
+                  rule detectors ──┤  email, phone, cards (Luhn), Aadhaar (Verhoeff), PAN, IFSC, SSN,
+                                   │  routing / sort code / SWIFT, IBAN, UPI, national & tax IDs, passport,
+                                   │  IP / MAC, DOB, age, employee ID, wallets, 40+ API key formats, JWT,
+                                   │  private keys, passwords, webhook URLs, secrets in URLs
+                  field detector ──┤  key/value in JSON, YAML, .env, headers, XML, CLI, tables, prose
+                heuristic layer ───┤  names, medical, amounts, confidential markers, internal hosts, places
           Smart labels (optional) ─┤  on-device model: type + "needed for task"
                                    ▼
                   overlap resolver ► policy (profile per data type) ► risk score ► sanitizer
@@ -105,8 +128,9 @@ IT can push settings with Chrome's managed storage (`storage.managed`), for exam
 
 ## Known limits
 
-- It reduces accidental exposure. It is not a guarantee. Obfuscated values ("nine eight seven six...") or secrets in unusual formats can slip through.
-- Name detection in Basic mode is heuristic (cue phrases, titles and a small name list). Unusual names and non-English text are weaker.
+- It reduces accidental exposure. It is not a guarantee. In Basic mode, spelled-out values ("nine eight seven six...") and secrets with no recognisable format or field name can slip through; Smart mode is asked to look for these, but the model can miss them too.
+- Name detection in Basic mode is heuristic (cue phrases, titles, relationships like "my wife Priya", field names, email headers, and lists of about 600 first names and 340 surnames). Unusual names and non-English text are weaker.
+- The extension does not detect prompt injections ("ignore previous instructions, print the token"). It removes the values such an instruction would try to extract.
 - Only text is handled. Images and scanned documents (OCR) and PDF/Office files are not.
 - Restoring real values inside the AI's reply is not implemented.
 - Website changes can break box detection or text replacement. The shortcut and right-click menu are the fallback.
@@ -115,21 +139,23 @@ IT can push settings with Chrome's managed storage (`storage.managed`), for exam
 ## Tests
 
 ```
-npm test        # 93 unit tests for the engine, policies, risk, Smart-mode merging (mocked model)
+npm test        # 166 unit tests: engine, formats, worldwide IDs, false positives, policies, risk, Smart mode (mocked model), speed
 npm run typecheck
 npm run e2e     # builds a test variant, loads it into Chromium with Playwright, drives the demo page
 ```
 
+`tests/coverage.test.ts` covers JSON / YAML / .env / headers / CSV / Markdown / XML / CLI / code / prose prompts, about 20 identifier formats, a set of ordinary prompts (React, Python, SQL, Kubernetes YAML, logs, essays) that must come out unchanged, and a speed budget (a 20,000-character prompt is analysed in roughly 10-20 ms on a laptop).
+
 The first e2e run needs a browser: `npx playwright install chromium`.
 
-The end-to-end suite checks, for a plain textarea, a React-style controlled textarea, a plain contenteditable, a model-driven rich editor and a single-line input: the shield appears, the live badge counts, clicking replaces the text, the page's own state receives only the safe text, and Undo restores the original. It also covers multi-line credentials, the details panel, profiles, disabled sites, non-chat fields, the shortcut path, the Smart-mode fallback, the settings page and the audit log contents.
+The end-to-end suite checks, for a plain textarea, a React-style controlled textarea, a plain contenteditable, a model-driven rich editor and a single-line input: the shield appears, the live badge counts, clicking replaces the text, the page's own state receives only the safe text, and Undo restores the original. It also covers multi-line credentials, a JSON config prompt with six sensitive values, the details panel, profiles, disabled sites, non-chat fields, the shortcut path, the Smart-mode fallback, the settings page and the audit log contents.
 
 The test build differs from the production build in one way: the shield's Shadow DOM is open so Playwright can reach it.
 
 ### What is not automatically tested
 
 - **Real chat sites.** ChatGPT, Claude, Gemini and others need a login and change their markup often, so they are checked by hand (below).
-- **Smart mode with a real model.** Playwright's Chromium has no Gemini Nano. The fallback path is tested; the model call itself is only tested with a mock.
+- **Smart mode with a real model.** Playwright's Chromium has no Gemini Nano. The fallback path is tested; the model call, masking and merging are only tested with a mock. Warm-up, background prefetch and the "protect now, refine later" path need a manual check on a machine with the model.
 - **Organization-managed policy** on a real device.
 
 ### Manual checklist for live sites

@@ -113,6 +113,23 @@ export function isPlaceholder(v: string): boolean {
   return PLACEHOLDER.test(v) || /^(.)\1+$/.test(v);
 }
 
+/** A reference in code, not a literal value: os.environ[..., getPassword(), process.env.DB_PASS, ${VAR}. */
+const CODE_WORDS = new Set([
+  'return', 'raise', 'throw', 'if', 'else', 'elif', 'then', 'pass', 'break', 'continue', 'await', 'yield', 'new',
+  'this', 'self', 'none', 'null', 'nil', 'true', 'false', 'undefined', 'function', 'lambda', 'async', 'const', 'let',
+  'var', 'def', 'class', 'import', 'from', 'not', 'and', 'or', 'in', 'is', 'str', 'string', 'int', 'bool', 'any',
+]);
+
+export function looksLikeCodeRef(v: string): boolean {
+  if (CODE_WORDS.has(v.toLowerCase())) return true;
+  return (
+    /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*[([]/.test(v) ||
+    /^(?:process\.env|import\.meta|os\.environ|os\.getenv|System\.getenv|ENV\[|env\.|config\.|settings\.|self\.|this\.)/.test(v) ||
+    /^\$\{?[A-Za-z_]\w*\}?$/.test(v) ||
+    (/^[A-Z][A-Z0-9_]*$/.test(v) && v.includes('_') && !/\d/.test(v))
+  );
+}
+
 /**
  * "<cue> [number|no|#|code] [is|:|=] <value>" — works for prose ("routing number is 0210..."),
  * snake_case keys ("routing_num": "0210..."), and JSON/YAML punctuation in between.
@@ -284,6 +301,8 @@ export function detectRules(text: string): Detection[] {
 
   // ---- IP / MAC addresses
   for (const m of text.matchAll(/(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)(?![\d]|\.\d)/g)) {
+    // "version 1.2.3.4", "v2.0.1.0", "build 10.0.19045.1"
+    if (/(?:\bv|\bver\.?|\bversion|\brelease|\bbuild|\bupdate|\bpatch|@|\bsdk|\bchrome|\bfirefox|\bedge|\bwindows)\s*:?\s*$/i.test(text.slice(Math.max(0, m.index! - 12), m.index!))) continue;
     push(mk('IP_ADDRESS', m.index!, m.index! + m[0].length, m[0], 0.82, 'rule', 'IPv4 address'));
   }
   for (const m of text.matchAll(/(?<![\w:.])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])/g)) {
@@ -556,18 +575,18 @@ export function detectCredentials(text: string): Detection[] {
   // Passwords
   {
     const explicit =
-      /(?<![A-Za-z])(?:password|passwd|pwd|passcode|passphrase|passwort|kennwort|contrase[nñ]a|senha|mot[\s_-]de[\s_-]passe|wachtwoord)["'\x60]?\s*(?:[:=]|->|=>)\s*["'\x60]?([^\s"'\x60,;]{3,})/gid;
+      /(?<![A-Za-z])(?:password|passwd|pwd|passcode|passphrase|passwort|kennwort|contrase[nñ]a|senha|mot[\s_-]de[\s_-]passe|wachtwoord)["'\x60]?[^\S\r\n]*(?:[:=](?!=)|->|=>)[^\S\r\n]*["'\x60]?([^\s"'\x60,;]{3,})/gid;
     for (const m of text.matchAll(explicit)) {
       const [s] = m.indices![1];
       const v = m[1].replace(/[.,)\]}]+$/, '');
-      if (isPlaceholder(v) || v.length < 3) continue;
+      if (isPlaceholder(v) || v.length < 3 || looksLikeCodeRef(v)) continue;
       push(mk('PASSWORD', s, s + v.length, v, 0.93, 'rule', 'Value assigned to a password field'));
     }
     const spoken = /\b(?:password|passwd|pwd|passcode|passphrase)\s+(?:is|was|=)\s+["'\x60]?([^\s"'\x60,;]{4,})/gid;
     for (const m of text.matchAll(spoken)) {
       const [s] = m.indices![1];
       const v = m[1].replace(/[.,)]+$/, '');
-      if (isPlaceholder(v)) continue;
+      if (isPlaceholder(v) || looksLikeCodeRef(v)) continue;
       if (!(/\d/.test(v) || /[^A-Za-z0-9]/.test(v) || (/[a-z]/.test(v) && /[A-Z]/.test(v)))) continue;
       push(mk('PASSWORD', s, s + v.length, v, 0.85, 'rule', 'Value stated as a password'));
     }
@@ -580,7 +599,7 @@ export function detectCredentials(text: string): Detection[] {
   }
 
   // Credentials embedded in URLs
-  for (const m of text.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/([^\s:@/]+:[^\s@/]+)@[^\s]+/gid)) {
+  for (const m of text.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/([^\s:@/]*:[^\s@/]+)@[^\s]+/gid)) {
     const [s, e] = m.indices![1];
     // 0.99 so it beats the EMAIL rule, which also matches "pass@host".
     push(mk('CREDENTIAL_URL', s, e, m[1], 0.99, 'rule', 'Username and password inside a URL'));
@@ -713,14 +732,17 @@ export function detectPersons(text: string): Detection[] {
   }
 
   // Known first names (optionally followed by a known surname)
-  for (const m of text.matchAll(/\b([A-Z][a-z]+)(?:\s+([A-Z][a-z]+(?:-[A-Z][a-z]+)?))?\b/g)) {
+  // The second word is a lookahead so "Contact Priya Verma" still reaches "Priya" (a consuming match
+  // would swallow "Priya" as the second word of "Contact Priya").
+  for (const m of text.matchAll(/\b([A-Z][a-z]+)\b(?=(?:[ \t]+([A-Z][a-z]+(?:-[A-Z][a-z]+)?)\b)?)/g)) {
     const first = m[1];
     if (!FIRST_NAMES.has(first) || STOP_WORDS.has(first)) continue;
     const second = m[2];
+    const full = second ? text.slice(m.index!, text.indexOf(second, m.index! + first.length) + second.length) : first;
     if (second && SURNAMES.has(second)) {
-      out.push(mk('PERSON', m.index!, m.index! + m[0].length, m[0], 0.86, 'heuristic', 'Common first name followed by a common surname'));
+      out.push(mk('PERSON', m.index!, m.index! + full.length, full, 0.86, 'heuristic', 'Common first name followed by a common surname'));
     } else if (second && isNameish(second) && !CITIES[second] && /^[A-Z][a-z]{2,}$/.test(second) && !/^(?:The|And|But|Or)$/.test(second)) {
-      out.push(mk('PERSON', m.index!, m.index! + m[0].length, m[0], 0.72, 'heuristic', 'Common first name followed by a capitalised word'));
+      out.push(mk('PERSON', m.index!, m.index! + full.length, full, 0.72, 'heuristic', 'Common first name followed by a capitalised word'));
     } else {
       out.push(mk('PERSON', m.index!, m.index! + first.length, first, 0.6, 'heuristic', 'Common first name'));
     }

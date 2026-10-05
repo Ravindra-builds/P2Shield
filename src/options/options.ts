@@ -78,6 +78,7 @@ const SAMPLE_LABELS: Record<string, string> = {
   developer: 'Credentials',
   bank: 'Bank details',
   memo: 'Internal memo',
+  config: 'JSON config',
   clean: 'Clean prompt',
 };
 

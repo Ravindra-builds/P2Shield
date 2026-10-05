@@ -39,6 +39,8 @@ export interface AuditEntry {
 
 export type Msg =
   | { type: 'SMART_LABEL'; text: string }
+  | { type: 'SMART_PREFETCH'; text: string }
+  | { type: 'SMART_WARM' }
   | { type: 'SMART_STATUS' }
   | { type: 'AUDIT'; entry: AuditEntry }
   | { type: 'PROTECT_FOCUSED'; force?: boolean };
