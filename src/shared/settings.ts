@@ -70,7 +70,13 @@ export async function loadSettings(): Promise<Settings> {
     /* extension context invalidated or storage unavailable */
   }
   const s: Settings = { ...DEFAULT_SETTINGS, ...stored };
-  s.profiles = { ...(stored.profiles ?? {}) };
+  // Profiles saved by an older version lack rules for data types added since. Normalising fills them
+  // in from the built-in defaults (and re-forces secrets to removal) instead of leaving holes.
+  s.profiles = {};
+  for (const [id, raw] of Object.entries(stored.profiles ?? {})) {
+    const p = normalizeProfile(raw, id);
+    if (p) s.profiles[id] = p;
+  }
   const managed = await readManaged();
   if (Object.keys(managed).length) {
     s.managed = true;

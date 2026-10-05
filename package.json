@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
     "e2e": "node e2e/run.mjs",
-    "demo": "node demo/serve.mjs"
+    "demo": "node demo/serve.mjs",
+    "landing": "npm --prefix \"landing page\" run dev",
+    "build:landing": "npm --prefix \"landing page\" run build"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

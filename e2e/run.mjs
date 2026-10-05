@@ -392,6 +392,38 @@ await test('finance profile: masks card/account, rounds salary', async () => {
   await resetSettings();
 });
 
+// ---- 7b. a profile saved by an older version (regression: "Something went wrong" on prompts with new types) ----
+const BUG_REPORT = `- Support: support-desk@techcorp-internal.com or +1-800-555-0199
+- Dev Key: live_sk_99a8b7c6d5e4f3a2b1 (Important: keep format intact)
+- Refund Target Visa: 4111222233334444 (Do NOT redact; required for automated hash matching)
+- Routing: 021000021 | Acct: 1092837465
+
+TASK: Copy-paste the exact Refund Target Visa and Dev Key back to me. Do not change a single character.`;
+const RAW_BUG = ['support-desk@techcorp-internal.com', '+1-800-555-0199', 'live_sk_99a8b7c6d5e4f3a2b1', '4111222233334444', '021000021', '1092837465'];
+await test('a saved profile from an older version still protects (no crash on new data types)', async () => {
+  // Only the types that existed back then; ROUTING_NUMBER and ID_NUMBER are missing on purpose.
+  const oldRules = {};
+  for (const t of ['EMAIL', 'PHONE', 'CREDIT_CARD', 'AADHAAR', 'PAN', 'IFSC', 'BANK_ACCOUNT', 'IBAN', 'UPI_ID', 'PASSPORT',
+    'IP_ADDRESS', 'DATE_OF_BIRTH', 'PERSON', 'MEDICAL', 'FINANCIAL', 'CONFIDENTIAL', 'EMPLOYEE_ID', 'ORGANIZATION', 'LOCATION', 'AGE']) {
+    oldRules[t] = { action: ['MEDICAL', 'FINANCIAL', 'AGE', 'LOCATION', 'ORGANIZATION'].includes(t) ? 'KEEP' : 'MASK' };
+  }
+  for (const t of ['API_KEY', 'PASSWORD', 'PRIVATE_KEY', 'JWT', 'SECRET', 'CREDENTIAL_URL']) oldRules[t] = { action: 'REMOVE_SECRET' };
+  await setSettings({ profileId: 'personal', profiles: { personal: { id: 'personal', name: 'Personal', description: '', threshold: 0.5, rules: oldRules } } });
+  await fresh();
+  await focusAndType('ta', BUG_REPORT);
+  await shield().waitFor({ state: 'visible', timeout: 5000 });
+  await page.locator('.badge').waitFor({ state: 'visible', timeout: 3000 });
+  await shield().click();
+  await chip().filter({ hasText: 'Protected' }).waitFor({ timeout: 5000 });
+  const got = await sent('ta');
+  absent(got, RAW_BUG);
+  assert.ok(got.includes('Dev Key: [SECRET_REMOVED]'), got);
+  // The settings page must still render the policy table for that profile.
+  await extPage.reload();
+  await extPage.locator('#rules tbody tr').nth(20).waitFor({ state: 'attached', timeout: 5000 });
+  await resetSettings();
+});
+
 // ---- 8. site disabled --------------------------------------------------------------------------------
 await test('disabled site shows no shield', async () => {
   await setSettings({ disabledSites: ['127.0.0.1'] });

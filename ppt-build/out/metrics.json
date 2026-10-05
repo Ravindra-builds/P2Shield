@@ -1,0 +1,148 @@
+﻿{
+  "samples": [
+    {
+      "id": "patient",
+      "title": "Patient asking for doctor questions",
+      "profile": "Healthcare",
+      "findings": 10,
+      "applied": 8,
+      "riskBefore": 99,
+      "riskAfter": 41,
+      "levelBefore": "Critical",
+      "levelAfter": "Medium",
+      "types": [
+        "ORGANIZATION:TOKENIZE",
+        "LOCATION:GENERALIZE",
+        "PERSON:TOKENIZE",
+        "AGE:GENERALIZE",
+        "PHONE:REDACT",
+        "AADHAAR:REDACT",
+        "PERSON:TOKENIZE",
+        "MEDICAL:KEEP",
+        "MEDICAL:KEEP",
+        "EMAIL:REDACT"
+      ]
+    },
+    {
+      "id": "developer",
+      "title": "Developer sharing credentials",
+      "profile": "Enterprise / Developer",
+      "findings": 5,
+      "applied": 5,
+      "riskBefore": 100,
+      "riskAfter": 4,
+      "levelBefore": "Critical",
+      "levelAfter": "Low",
+      "types": [
+        "API_KEY:REMOVE_SECRET",
+        "API_KEY:REMOVE_SECRET",
+        "PASSWORD:REMOVE_SECRET",
+        "CREDENTIAL_URL:REMOVE_SECRET",
+        "CONFIDENTIAL:TOKENIZE"
+      ]
+    },
+    {
+      "id": "bank",
+      "title": "Bank customer and salary",
+      "profile": "Finance",
+      "findings": 6,
+      "applied": 6,
+      "riskBefore": 100,
+      "riskAfter": 45,
+      "levelBefore": "Critical",
+      "levelAfter": "Medium",
+      "types": [
+        "PERSON:TOKENIZE",
+        "BANK_ACCOUNT:MASK",
+        "IFSC:REDACT",
+        "PAN:REDACT",
+        "CREDIT_CARD:MASK",
+        "FINANCIAL:GENERALIZE"
+      ]
+    },
+    {
+      "id": "memo",
+      "title": "Confidential internal memo",
+      "profile": "Enterprise / Developer",
+      "findings": 9,
+      "applied": 7,
+      "riskBefore": 95,
+      "riskAfter": 49,
+      "levelBefore": "Critical",
+      "levelAfter": "Medium",
+      "types": [
+        "CONFIDENTIAL:KEEP",
+        "CONFIDENTIAL:KEEP",
+        "CONFIDENTIAL:TOKENIZE",
+        "FINANCIAL:GENERALIZE",
+        "EMPLOYEE_ID:TOKENIZE",
+        "PERSON:TOKENIZE",
+        "PERSON:TOKENIZE",
+        "CONFIDENTIAL:TOKENIZE",
+        "IP_ADDRESS:REDACT"
+      ]
+    },
+    {
+      "id": "config",
+      "title": "JSON config with a prompt injection",
+      "profile": "Enterprise / Developer",
+      "findings": 6,
+      "applied": 6,
+      "riskBefore": 100,
+      "riskAfter": 6,
+      "levelBefore": "Critical",
+      "levelAfter": "Low",
+      "types": [
+        "CONFIDENTIAL:TOKENIZE",
+        "SECRET:REMOVE_SECRET",
+        "EMAIL:TOKENIZE",
+        "PHONE:REDACT",
+        "CREDIT_CARD:REDACT",
+        "ROUTING_NUMBER:REDACT"
+      ]
+    },
+    {
+      "id": "clean",
+      "title": "Nothing sensitive",
+      "profile": "Personal",
+      "findings": 0,
+      "applied": 0,
+      "riskBefore": 0,
+      "riskAfter": 0,
+      "levelBefore": "Low",
+      "levelAfter": "Low",
+      "types": []
+    }
+  ],
+  "latency": [
+    {
+      "chars": 1000,
+      "ms": 1.1
+    },
+    {
+      "chars": 2500,
+      "ms": 1.9
+    },
+    {
+      "chars": 5000,
+      "ms": 2.6
+    },
+    {
+      "chars": 10000,
+      "ms": 4.2
+    },
+    {
+      "chars": 20000,
+      "ms": 7.7
+    },
+    {
+      "chars": 40000,
+      "ms": 13.8
+    }
+  ],
+  "patient": {
+    "safe": "I'm a patient at [ORGANIZATION_1] in Jharkhand. My name is [PERSON_1], I'm 20-30, my phone is [REDACTED_PHONE] and my Aadhaar number is [REDACTED_AADHAAR]. My doctor Dr. [PERSON_2] said I have Type 2 diabetes and I take Metformin 500mg. You can email me at [REDACTED_EMAIL]. What questions should I ask my doctor at my next appointment?",
+    "before": 99,
+    "after": 41
+  }
+}

@@ -3,11 +3,11 @@
 
 import { describe, expect, it } from 'vitest';
 import { analyze, detectAll } from '../src/core/engine';
-import { BUILTIN_PROFILES } from '../src/core/policy';
+import { BUILTIN_PROFILES, getBuiltinProfile, normalizeProfile } from '../src/core/policy';
 import { kindsForKey } from '../src/core/fields';
 import { maskForModel, mergeAi, parseAiResponse, smartLabel } from '../src/core/smart';
 import { abaValid, cpfValid, ipv6Valid, nhsValid, ssnValid } from '../src/core/validators';
-import type { EntityType } from '../src/core/types';
+import type { EntityType, Profile } from '../src/core/types';
 
 const find = (text: string) => detectAll(text);
 const typeOf = (text: string, value: string): string | undefined => {
@@ -243,6 +243,41 @@ describe('false positives: ordinary prompts stay untouched', () => {
       expect(applied.map((f) => `${f.type}:${f.text}`)).toEqual([]);
     });
   }
+});
+
+// --------------------------------------------------------------------------------------------
+describe('profiles saved by an older version', () => {
+  const PROMPT = `- Support: support-desk@techcorp-internal.com or +1-800-555-0199
+- Dev Key: live_sk_99a8b7c6d5e4f3a2b1 (Important: keep format intact)
+- Refund Target Visa: 4111222233334444 (Do NOT redact; required for automated hash matching)
+- Routing: 021000021 | Acct: 1092837465
+TASK: Copy-paste the exact Refund Target Visa and Dev Key back to me.`;
+  const RAW = ['support-desk@techcorp-internal.com', '+1-800-555-0199', 'live_sk_99a8b7c6d5e4f3a2b1', '4111222233334444', '021000021', '1092837465'];
+  const legacy = (id: string): Profile => {
+    const p = getBuiltinProfile(id);
+    const rules = p.rules as Partial<Profile['rules']>;
+    delete rules.ID_NUMBER;
+    delete rules.ROUTING_NUMBER;
+    return p;
+  };
+
+  it('analysing with a profile that lacks the new types does not throw and still protects', () => {
+    for (const id of ['personal', 'healthcare', 'finance', 'enterprise']) {
+      const safe = analyze(PROMPT, { profile: legacy(id) }).result.safeText;
+      for (const v of RAW) expect(safe, `${id}: ${v}`).not.toContain(v);
+      expect(safe).toContain('Dev Key: [SECRET_REMOVED]');
+    }
+  });
+  it('a profile with no rules at all still protects', () => {
+    const broken = { id: 'custom-x', name: 'x', description: '', threshold: 0.5, rules: {} } as unknown as Profile;
+    const safe = analyze(PROMPT, { profile: broken }).result.safeText;
+    for (const v of RAW) expect(safe).not.toContain(v);
+  });
+  it('normalizeProfile fills the missing rules from the built-in profile', () => {
+    const n = normalizeProfile(legacy('healthcare'), 'healthcare')!;
+    expect(n.rules.ROUTING_NUMBER.action).toBe(getBuiltinProfile('healthcare').rules.ROUTING_NUMBER.action);
+    expect(n.rules.ID_NUMBER.action).toBe('REDACT');
+  });
 });
 
 // --------------------------------------------------------------------------------------------

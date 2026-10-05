@@ -2,8 +2,9 @@
 
 import { CITIES } from './lexicon';
 import { isCredentialType } from './detectors';
+import { BUILTIN_PROFILES } from './policy';
 import { computeRisk, riskLevel, RESIDUAL } from './risk';
-import type { Action, AnalysisResult, Detection, Finding, Profile } from './types';
+import type { Action, AnalysisResult, Detection, EntityType, Finding, PolicyRule, Profile } from './types';
 
 export type Override = 'KEEP' | 'PROTECT';
 
@@ -167,6 +168,20 @@ class Tokenizer {
 
 // ---- Policy decision ----------------------------------------------------------
 
+/**
+ * The profile's rule for a type. A profile from an older version (or a hand-edited import) may not
+ * have a rule for a newer type: fall back to the built-in profile with the same id, then Personal,
+ * then redact. Never throw: a crash here means nothing gets protected at all.
+ */
+function ruleFor(profile: Profile, type: EntityType): PolicyRule {
+  const own = profile.rules?.[type];
+  if (own && typeof own.action === 'string') return own;
+  return (
+    BUILTIN_PROFILES.find((p) => p.id === profile.id)?.rules[type] ??
+    BUILTIN_PROFILES[0]?.rules[type] ?? { action: 'REDACT' }
+  );
+}
+
 export function decideAction(d: Detection, profile: Profile, override?: Override): Action {
   // Secrets are always removed; the user can't switch this off.
   if (isCredentialType(d.type)) return d.confidence >= 0.5 ? 'REMOVE_SECRET' : 'KEEP';
@@ -174,7 +189,7 @@ export function decideAction(d: Detection, profile: Profile, override?: Override
   // Advisory flag only: the word "Confidential" itself is not replaced.
   if (d.label === 'CONFIDENTIAL_MARKER') return 'KEEP';
 
-  const rule = profile.rules[d.type];
+  const rule = ruleFor(profile, d.type);
   let action: Action = rule.action;
   if (d.confidence < profile.threshold) action = 'KEEP';
   if (rule.keepIfNeeded && d.neededForTask === true) action = 'KEEP';
