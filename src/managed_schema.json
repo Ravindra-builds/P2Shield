@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "profileId": { "title": "Profile id to enforce (personal, healthcare, finance, enterprise or a custom id)", "type": "string" },
+    "lockProfile": { "title": "Prevent users from changing the profile", "type": "boolean" },
+    "mode": { "title": "basic or smart", "type": "string" },
+    "showOnAll": { "title": "Show the shield on every text box", "type": "boolean" },
+    "disabledSites": { "title": "Sites where the shield is turned off", "type": "array", "items": { "type": "string" } },
+    "customProfile": { "title": "A full organization profile (same JSON as the exported profile files)", "type": "object" }
+  }
+}

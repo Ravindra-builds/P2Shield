@@ -3,5 +3,7 @@ node_modules/
 dist/
 .wxt/
 test-results/
+dist-e2e/
+tmp_*
 playwright-report/
 *.log

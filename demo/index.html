@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Demo chatbots — TechKnights Privacy Firewall</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 15px/1.5 system-ui, "Segoe UI", sans-serif; margin: 0; background: #f1f5f9; color: #0f172a; }
+    @media (prefers-color-scheme: dark) { body { background: #0b1020; color: #e5e7eb; } .panel { background: #131a2e !important; border-color: #263049 !important; } textarea, input, .ce { background: #0b1020 !important; color: #e5e7eb !important; border-color: #334155 !important; } pre { background: #0b1020 !important; } }
+    header { padding: 18px 24px; border-bottom: 1px solid #cbd5e1; }
+    h1 { margin: 0; font-size: 20px; } header p { margin: 4px 0 0; color: #475569; font-size: 14px; }
+    main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 80px; display: grid; gap: 22px; }
+    .panel { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 18px; }
+    .panel h2 { margin: 0 0 4px; font-size: 16px; } .note { color: #64748b; font-size: 13px; margin: 0 0 10px; }
+    .composer { display: flex; gap: 10px; align-items: flex-end; border: 1px solid #94a3b8; border-radius: 14px; padding: 10px; }
+    .composer textarea, .composer .ce, .composer input { flex: 1; border: 0; outline: 0; font: inherit; background: transparent; resize: vertical; min-height: 64px; }
+    .composer input { min-height: 0; padding: 8px 0; }
+    .ce { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
+    .ce:empty::before, .ce p:only-child:has(br:only-child)::before { content: attr(data-placeholder); color: #94a3b8; }
+    .ce p { margin: 0; }
+    button.send { border: 0; border-radius: 50%; width: 34px; height: 34px; background: #0f172a; color: #fff; cursor: pointer; font-size: 16px; }
+    .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+    select { padding: 5px 8px; border-radius: 8px; }
+    pre { margin: 10px 0 0; background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; padding: 10px; white-space: pre-wrap; word-break: break-word; font: 13px/1.5 ui-monospace, Consolas, monospace; min-height: 44px; }
+    .lbl { font-size: 12px; color: #64748b; margin-top: 10px; }
+    /* ChatGPT-style composer: a rounded card, icons either side, a narrow editor that grows inside a scrolling wrapper. */
+    .gpt-card { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px; border-radius: 28px; background: #e2e8f0; max-width: 720px; margin: 0 auto; }
+    @media (prefers-color-scheme: dark) { .gpt-card { background: #303030; } }
+    .gpt-scroll { flex: 1; max-height: 110px; overflow-y: auto; }
+    .gpt-card .ce { overflow: visible; max-height: none; min-height: 28px; padding: 4px 0; }
+    .gpt-card .icon { border: 0; background: transparent; font-size: 18px; width: 34px; height: 34px; cursor: pointer; color: inherit; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Demo chatbots</h1>
+    <p>Each box below behaves differently under the hood. Click into a box, pick a sample (or type), click the shield, then press Send to see exactly what the page would receive.</p>
+  </header>
+  <main>
+    <section class="panel" aria-labelledby="h1">
+      <h2 id="h1">1. Plain textarea</h2>
+      <p class="note">A normal &lt;textarea&gt;.</p>
+      <div class="composer"><textarea id="ta" rows="3" placeholder="Message the assistant…"></textarea><button class="send" id="send-ta" aria-label="Send message">↑</button></div>
+      <div class="row"><label>Sample <select class="sample" data-target="ta"></select></label></div>
+      <div class="lbl">The page received:</div><pre id="out-ta" aria-live="polite">(nothing sent yet)</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="h2">
+      <h2 id="h2">2. Framework-controlled textarea</h2>
+      <p class="note">Emulates React: it keeps its own state and ignores programmatic <code>.value</code> changes that don't come with a real input event.</p>
+      <div class="composer"><textarea id="ctl" rows="3" placeholder="Ask anything"></textarea><button class="send" id="send-ctl" aria-label="Send message">↑</button></div>
+      <div class="row"><label>Sample <select class="sample" data-target="ctl"></select></label><span id="ctl-count" class="note"></span></div>
+      <div class="lbl">The page received (its own state):</div><pre id="out-ctl" aria-live="polite">(nothing sent yet)</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="h3">
+      <h2 id="h3">3. Plain contenteditable</h2>
+      <p class="note">A &lt;div contenteditable&gt; with role=textbox, like many custom chat UIs.</p>
+      <div class="composer"><div id="ce" class="ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Type your message" data-placeholder="Type your message…"></div><button class="send" id="send-ce" aria-label="Send message">↑</button></div>
+      <div class="row"><label>Sample <select class="sample" data-target="ce"></select></label></div>
+      <div class="lbl">The page received:</div><pre id="out-ce" aria-live="polite">(nothing sent yet)</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="h4">
+      <h2 id="h4">4. Model-driven rich editor</h2>
+      <p class="note">Like ProseMirror / Lexical / Slate: it cancels every edit and rebuilds the DOM from its own model, so only real editing commands reach it.</p>
+      <div class="composer"><div id="model" class="ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message" data-placeholder="Message the assistant…"></div><button class="send" id="send-model" aria-label="Send message">↑</button></div>
+      <div class="row"><label>Sample <select class="sample" data-target="model"></select></label></div>
+      <div class="lbl">The page received (its own model):</div><pre id="out-model" aria-live="polite">(nothing sent yet)</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="h5">
+      <h2 id="h5">5. Single-line input</h2>
+      <p class="note">A one-line &lt;input&gt; with a chat-style placeholder.</p>
+      <div class="composer"><input id="inp" type="text" placeholder="Ask me anything" /><button class="send" id="send-inp" aria-label="Send message">↑</button></div>
+      <div class="row"><label>Sample <select class="sample" data-target="inp"></select></label></div>
+      <div class="lbl">The page received:</div><pre id="out-inp" aria-live="polite">(nothing sent yet)</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="h7">
+      <h2 id="h7">7. ChatGPT-style composer</h2>
+      <p class="note">A rounded card with icons on both sides of a narrow editor that scrolls inside a wrapper. The shield should sit at the card's top-right corner, never in the middle or at the top of the page.</p>
+      <div class="gpt-card" id="gpt-card">
+        <button class="icon" type="button" aria-label="Attach">+</button>
+        <div class="gpt-scroll"><div id="gpt" class="ce ProseMirror" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Ask anything" data-placeholder="Ask anything"><p><br></p></div></div>
+        <button class="icon" type="button" aria-label="Voice">&#127908;</button>
+        <button class="send" id="send-gpt" aria-label="Send message">↑</button>
+      </div>
+      <div class="row"><label>Sample <select class="sample" data-target="gpt"></select></label>
+        <button type="button" id="rerender-gpt">Simulate the page re-rendering the editor</button></div>
+      <div class="lbl">The page received:</div><pre id="out-gpt" aria-live="polite">(nothing sent yet)</pre>
+    </section>
+
+    <section class="panel" aria-labelledby="h6">
+      <h2 id="h6">6. Not a chat box</h2>
+      <p class="note">A search field. The shield should NOT appear here (unless "show on every text box" is on).</p>
+      <div class="composer"><input id="search" type="search" placeholder="Search products" /></div>
+    </section>
+  </main>
+
+  <script>
+    // ---------- Fictional samples (all values are made up) ----------
+    const SAMPLES = [
+      ["Patient asking for doctor questions", "I'm a patient at ABC Hospital in Jamshedpur. My name is Rahul Sharma, I'm 27, my phone is 98765 43210 and my Aadhaar number is 2345 6789 0124. My doctor Dr. Anil Kumar said I have Type 2 diabetes and I take Metformin 500mg. You can email me at rahul.sharma@gmail.com. What questions should I ask my doctor at my next appointment?"],
+      ["Developer sharing credentials", "Deploy this app for me.\nOPENAI_API_KEY=sk-proj-Ab3dEf9hIjKlMnOpQrStUv12\nAWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\nThe database password: Tr0ub4dor&3\nWhy does the build fail?"],
+      ["Bank customer and salary", "I'm Priya Verma, account number 123456789012, IFSC HDFC0001234, PAN ABCPE1234F, and my credit card is 4111 1111 1111 1111. My salary is ₹12,50,000 per year. Help me understand my tax calculation."],
+      ["Confidential internal memo", "CONFIDENTIAL - internal use only.\nProject Phoenix Q3 revenue is $4.2 million. Employee ID: 48291 (Neha Gupta) reports to Mr. Vikram Singh.\nThe staging server is build01.corp at 10.2.3.4. Summarize the risks for the board."],
+      ["Nothing sensitive", "Explain the difference between TCP and UDP in simple terms, with one example each."],
+    ];
+    window.__samples = SAMPLES.map(s => s[1]);
+    for (const sel of document.querySelectorAll('select.sample')) {
+      sel.append(new Option('Choose…', ''));
+      SAMPLES.forEach((s, i) => sel.append(new Option(s[0], String(i))));
+      sel.addEventListener('change', () => {
+        if (sel.value === '') return;
+        const el = document.getElementById(sel.dataset.target);
+        el.focus();
+        // Select all, then insert like a user paste would (fires real beforeinput/input events).
+        if (el.select) el.select(); else { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+        document.execCommand('insertText', false, SAMPLES[Number(sel.value)][1]);
+        sel.value = '';
+      });
+    }
+    const show = (id, text) => { document.getElementById('out-' + id).textContent = text; };
+    window.__received = {};
+
+    // ---------- 1. Plain textarea ----------
+    document.getElementById('send-ta').onclick = () => { const v = document.getElementById('ta').value; window.__received.ta = v; show('ta', v); };
+
+    // ---------- 2. Framework-controlled textarea (React-like value tracking) ----------
+    (() => {
+      const node = document.getElementById('ctl');
+      const native = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+      let tracked = '';
+      let state = '';
+      Object.defineProperty(node, 'value', {
+        configurable: true,
+        get() { return native.get.call(this); },
+        set(v) { tracked = String(v); native.set.call(this, v); },
+      });
+      const render = () => {
+        if (native.get.call(node) !== state) node.value = state; // controlled: DOM follows state
+        document.getElementById('ctl-count').textContent = state.length + ' characters in app state';
+      };
+      node.addEventListener('input', () => {
+        const cur = native.get.call(node);
+        if (cur === tracked) return; // React skips onChange when the tracked value is unchanged
+        tracked = cur; state = cur; render();
+      });
+      document.getElementById('send-ctl').onclick = () => { window.__received.ctl = state; show('ctl', state); };
+      render();
+    })();
+
+    // ---------- 3. Plain contenteditable ----------
+    document.getElementById('send-ce').onclick = () => { const v = document.getElementById('ce').innerText; window.__received.ce = v; show('ce', v); };
+
+    // ---------- 4. Model-driven editor ----------
+    (() => {
+      const node = document.getElementById('model');
+      let text = '';
+      const caretToEnd = () => { const r = document.createRange(); r.selectNodeContents(node); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); };
+      const render = () => {
+        node.replaceChildren();
+        for (const line of (text === '' ? [''] : text.split('\n'))) {
+          const p = document.createElement('p');
+          if (line) p.textContent = line; else p.append(document.createElement('br'));
+          node.append(p);
+        }
+        caretToEnd();
+      };
+      const everythingSelected = () => {
+        const sel = getSelection();
+        const selected = sel ? sel.toString().replace(/\s/g, '') : '';
+        return selected.length > 0 && selected === text.replace(/\s/g, '');
+      };
+      // Like Lexical / Slate / ProseMirror: pasted plain text is read from the clipboard data.
+      node.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const data = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+        text = everythingSelected() ? data : text + data;
+        render();
+      });
+      node.addEventListener('beforeinput', (e) => {
+        e.preventDefault();
+        const sel = getSelection();
+        const selected = sel ? sel.toString().replace(/\s/g, '') : '';
+        const everything = selected.length > 0 && selected === text.replace(/\s/g, '');
+        const t = e.inputType;
+        if (t === 'insertText' || t === 'insertReplacementText' || t === 'insertFromPaste') {
+          const data = e.data ?? (e.dataTransfer ? e.dataTransfer.getData('text/plain') : '') ?? '';
+          text = everything ? data : text + data;
+        } else if (t === 'insertLineBreak' || t === 'insertParagraph') {
+          text = everything ? '\n' : text + '\n';
+        } else if (t.startsWith('delete')) {
+          text = everything ? '' : text.slice(0, -1);
+        }
+        render();
+      });
+      document.getElementById('send-model').onclick = () => { window.__received.model = text; show('model', text); };
+      render();
+    })();
+
+    // ---------- 7. ChatGPT-style composer ----------
+    // Single-page chat apps often swap the editor node (after sending, switching chats, layout changes).
+    document.getElementById('rerender-gpt').onclick = () => {
+      const old = document.getElementById('gpt');
+      const fresh = old.cloneNode(true);
+      old.replaceWith(fresh);
+      fresh.focus();
+    };
+    // Like ChatGPT, read the editor one paragraph per line (innerText would put a blank line between paragraphs).
+    document.getElementById('send-gpt').onclick = () => {
+      const v = [...document.getElementById('gpt').querySelectorAll(':scope > p')].map((p) => p.innerText.replace(/\n$/, '')).join('\n');
+      window.__received.gpt = v; show('gpt', v);
+    };
+
+    // ---------- 5. Single-line input ----------
+    document.getElementById('send-inp').onclick = () => { const v = document.getElementById('inp').value; window.__received.inp = v; show('inp', v); };
+  </script>
+</body>
+</html>

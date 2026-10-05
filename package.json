@@ -1,0 +1,22 @@
+{
+  "name": "techknights-privacy-firewall",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pre-LLM Privacy Firewall: a Chrome extension that sanitizes prompts locally before they reach any chatbot.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run",
+    "e2e": "node e2e/run.mjs",
+    "demo": "node demo/serve.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/chrome": "0.3.4",
+    "@types/node": "24.0.0",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}
