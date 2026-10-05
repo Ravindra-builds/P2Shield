@@ -1,205 +1,264 @@
-# P2Shield
+<p align="center">
+  <img src="p2shield-logo.png" alt="P2Shield logo" width="120" />
+</p>
 
-A Chrome extension that cleans your prompt **on your own device** before any AI chatbot sees it.
+<h1 align="center">P2Shield</h1>
 
-Click the shield that appears in a chat box. The extension finds personal data, credentials and confidential details, replaces them according to a privacy policy, and puts the safe version back in the box. You press Send as usual.
+<p align="center">
+  <strong>A pre-LLM privacy firewall that cleans every prompt on your own device, before any chatbot sees it.</strong>
+</p>
 
-There is no proxy, no server, no account and no analytics. The extension makes no network requests. Raw text never leaves the browser.
+<p align="center">
+  <img alt="Manifest V3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" />
+  <img alt="On-device" src="https://img.shields.io/badge/processing-100%25%20on--device-2E9E5B" />
+  <img alt="Network requests" src="https://img.shields.io/badge/network%20requests-0-2E9E5B" />
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-yellow" />
+</p>
 
-Built for the hackathon problem **"Pre-LLM Privacy Firewall for Sensitive Data Protection"**.
+<p align="center">
+  Team <strong>TechKnights</strong> · BITSHIFT 2026 · Problem Statement 10:
+  <em>Pre-LLM Privacy Firewall for Sensitive Data Protection</em>
+</p>
 
-## What it does
+---
 
-| Problem statement asks for | How it is covered |
-|---|---|
-| Detect names, phones, emails, financial data, credentials, health records, confidential data | Rule detectors with checksums (Luhn, Verhoeff, IBAN mod-97, ABA routing, SSN structure, CPF, NHS, SIN), 40+ credential formats, a structured-field detector that reads the field name (`"routing_num": ...`, `DB_PASSWORD=...`, `| CVV | 482 |`), and heuristics for names, medical terms, amounts and confidential markers. Optional on-device AI (Smart mode) for context. |
-| Operate before the LLM receives the input | The text is rewritten inside the chat box before you send it. |
-| Redaction, anonymization, tokenization | Per-type actions: keep, mask, tokenize (`[PERSON_1]`), redact (`[REDACTED_PHONE]`), generalize (`27` becomes `20-30`, `₹12,50,000` becomes `approx. ₹13 lakh`, a city becomes its state), remove secret. |
-| Configurable privacy policies | Four built-in profiles (Personal, Healthcare, Finance, Enterprise), an editable rules table, import/export as JSON, and organization-pushed policy through Chrome managed storage. |
-| Risk scoring | 0 to 100 score before and after sanitization, with Low / Medium / High / Critical levels. |
-| A safe version of the input | Written into the box, with Undo and a per-item review panel. |
+## Contents
 
-Passwords, API keys, tokens, private keys and credentials in URLs are **always removed**, in every profile. A custom or imported profile cannot change that.
+[Overview](#overview) · [Example](#example) · [Features](#features) · [What it understands](#what-it-understands) · [Quick start](#quick-start) · [Usage](#usage) · [Basic and Smart mode](#basic-mode-and-smart-mode) · [Profiles](#privacy-profiles) · [Risk score](#risk-score) · [Architecture](#architecture) · [Privacy and security](#privacy-and-security) · [Library use](#use-the-engine-as-a-library) · [Testing](#testing) · [Layout](#project-layout) · [Limits](#known-limits) · [Roadmap](#roadmap)
 
-### What it understands
+---
 
-Prompts rarely look like neat sentences, so the engine reads the shape of the text as well as the values:
+## Overview
 
-- **Structured data:** JSON, JS/Python objects, YAML, `.env` / INI / `export`, HTTP headers and cookies, XML, function arguments (`connect(password="...")`), CLI flags (`--password=...`, `curl -u user:pass`), CSV / TSV / Markdown tables (by column header or as key/value rows), and prose ("my routing number is ...").
-- **Field names in any style:** `api_token`, `apiToken`, `X-Api-Key`, `card_token_raw`, `routing_num`, `emergency_phone`. The field name proposes a type and the value's shape confirms it, so `"card_token_raw": "5412..."` is a card while `"card_token_raw": "tok_9f..."` is a secret. Descriptive keys (`token_type`, `password_min_length`) and code references (`os.environ[...]`, `getToken()`) are left alone.
-- **Identifiers worldwide:** Aadhaar, PAN, GSTIN, IFSC, UPI, US SSN and ABA routing numbers, UK NINO / NHS / sort codes, Canadian SIN, Brazilian CPF, Emirates ID, Singapore NRIC, SWIFT/BIC, IBAN, passports, driving licences, tax IDs, medical record and insurance numbers, vehicle registrations, crypto wallets and seed phrases.
-- **Infrastructure:** internal hostnames and URLs (`internal-vault.net`, `db.internal.acme.com`, `*.corp`), webhook URLs, cloud ARNs and account IDs, IPv4 / IPv6 / MAC addresses, user names inside file paths.
+People paste names, Aadhaar numbers, cards, API keys and medical details into AI chatbots every day. Once sent, that data sits on someone else's server. P2Shield puts a shield on any AI chat box. One click finds sensitive data, rewrites the prompt in place according to a privacy policy, and you press Send as usual.
 
-Numbers are never matched inside a longer token (the `7890123456789` inside `bearer_secret_xyz7890123456789` is part of the secret, not a card). When a broad span such as an address contains a more specific item such as a card, both are kept.
+- **On-device.** No proxy, server, account or analytics. The extension makes no network requests.
+- **Policy-driven.** Four built-in profiles, editable rules, and organization-pushed policy.
+- **Reversible.** Undo restores the original; a review panel lets you keep individual items.
+- **Measured.** A 0 to 100 risk score before and after.
 
-## Install (load unpacked)
+## Example
 
+Real engine output, **Healthcare** profile (all sample data is fictional):
+
+```text
+BEFORE (risk 99, Critical)
+I'm a patient at ABC Hospital in Jamshedpur. My name is Rahul Sharma, I'm 27, my phone
+is 98765 43210 and my Aadhaar number is 2345 6789 0124. My doctor Dr. Anil Kumar said
+I have Type 2 diabetes and I take Metformin 500mg. You can email me at
+rahul.sharma@gmail.com. What questions should I ask my doctor?
+
+AFTER (risk 41, Medium)
+I'm a patient at [ORGANIZATION_1] in Jharkhand. My name is [PERSON_1], I'm 20-30, my
+phone is [REDACTED_PHONE] and my Aadhaar number is [REDACTED_AADHAAR]. My doctor
+Dr. [PERSON_2] said I have Type 2 diabetes and I take Metformin 500mg. You can email me
+at [REDACTED_EMAIL]. What questions should I ask my doctor?
 ```
+
+Identity is removed; the diagnosis stays because the AI needs it to answer.
+
+## Features
+
+| Action | Example |
+|---|---|
+| Mask | `98765 43210` → `98*** ***10` |
+| Tokenize | `Rahul Sharma` → `[PERSON_1]` (same value, same token) |
+| Redact | `2345 6789 0124` → `[REDACTED_AADHAAR]` |
+| Generalize | `27` → `20-30`; `₹12,50,000` → `approx. ₹13 lakh`; a city → its state |
+| Remove secret | `sk-proj-Ab3d...` → `[SECRET_REMOVED]` |
+| Keep | `Type 2 diabetes` (needed for the task) |
+
+- **28 data types**, found by rule detectors with checksums, a structured-field detector, heuristics, and optional on-device AI.
+- **Secrets are always removed** (passwords, API keys, tokens, private keys, credentials in URLs) in every profile. A custom or imported profile cannot change this.
+- **Settings app** with an overview, playground, mode and policy editors, per-site controls and a metadata-only audit log.
+
+## What it understands
+
+- **Structured data:** JSON, JS/Python objects, YAML, `.env`, HTTP headers, XML, function arguments, CLI flags, CSV / TSV / Markdown tables, and prose ("my routing number is ...").
+- **Field names in any style** (`api_token`, `apiToken`, `X-Api-Key`, `routing_num`). The name proposes a type and the value's shape confirms it, so `"card_token_raw": "5412..."` is a card while `"card_token_raw": "tok_9f..."` is a secret. Descriptive keys (`token_type`) and code references (`os.environ[...]`) are left alone.
+- **Identifiers:** Aadhaar (Verhoeff), PAN, GSTIN, IFSC, UPI, US SSN and ABA routing, UK NINO / NHS / sort code, Canadian SIN, Brazilian CPF, Emirates ID, Singapore NRIC, SWIFT/BIC, IBAN (mod-97), Luhn-checked cards, passports, driving licences, tax IDs, medical and insurance numbers, crypto wallets and seed phrases.
+- **Credentials and infrastructure:** 30+ named token formats (OpenAI, Anthropic, AWS, GitHub, Stripe, Slack, Google and more), private keys, JWTs, bearer auth, webhook URLs, internal hostnames, cloud ARNs, IP / MAC addresses, and user names in file paths.
+- **Checksums keep false alarms low**, and numbers are never matched inside a longer token.
+
+## Quick start
+
+Requires Node.js 20+ and Chrome (or another Chromium browser) 116+.
+
+```bash
+git clone https://github.com/Ravindra-builds/P2Shield.git
+cd P2Shield
 npm install
 npm run build
 ```
 
-Then in Chrome open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and choose the `dist` folder.
+Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and choose the `dist` folder. To try it on the bundled demo chat page:
 
-## Use it
+```bash
+npm run demo        # http://localhost:4173/
+```
 
-1. Open any AI chatbot, or the demo page (`npm run demo`, then open http://localhost:4173/).
-2. Click into the message box. A shield appears just above the top-right corner of the input card (the rounded box that holds the text, the + button and the send button). If the site has no such card, it sits above the text box itself.
-3. Type or paste a prompt. A number on the shield shows how many items would be protected, and its colour shows the risk.
-4. Click the shield. The box now holds the safe prompt and a note shows `Protected 5 items · Risk 99 → 63`.
-5. **Undo** restores your original text. **Details** lists every finding with a checkbox so you can keep an item's original value (except secrets).
+## Usage
 
-Other ways in:
+1. Click into any AI chat box. A shield appears above the top-right corner of the input card.
+2. Type or paste. A badge on the shield counts what would be protected; its colour shows the risk.
+3. Click the shield. The box now holds the safe prompt (`Protected 5 items · Risk 99 → 63`).
+4. **Undo** restores your text. **Details** lists each finding so you can keep an item (except secrets).
 
-- **Shortcut:** `Alt+Shift+S` protects the focused box (change it at `chrome://extensions/shortcuts`).
-- **Right-click** any text box and choose *Protect this text with P2Shield*.
-- **Toolbar icon** opens settings and the playground.
+| Other ways in | How |
+|---|---|
+| Shortcut | `Alt+Shift+S` on the focused box (change at `chrome://extensions/shortcuts`) |
+| Context menu | Right-click a text box, *Protect this text with P2Shield* |
+| Toolbar icon | Opens settings and the playground |
 
-The shield shows automatically on common AI sites (ChatGPT, Claude, Gemini, Copilot, Perplexity, DeepSeek, Grok, Mistral, Poe, Meta AI, HuggingChat and more) and on any page where a box looks like a chat prompt (chat-style placeholder, multi-line field, nearby send button). Turn on *Show the shield on every text box* in settings for everything else. The shortcut and right-click menu work everywhere.
+The shield shows automatically on common AI sites (ChatGPT, Claude, Gemini, Copilot, Perplexity, DeepSeek, Grok, Mistral and more) and on any box that looks like a chat prompt. Turn on *Show on every text box* in settings for everything else. The shortcut and context menu work everywhere.
 
-### Settings and playground
-
-The settings page has a **Playground** where you can paste text or drop a `.txt`, `.md`, `.csv`, `.json` or `.log` file and see the highlighted findings, risk before and after, and the safe version. It also has the policy editor, site controls and the audit log. PDF and Office files are not supported yet.
+The **Playground** accepts pasted text or a `.txt`, `.md`, `.csv`, `.json` or `.log` file (2 MB max) and shows highlighted findings, risk before and after, and the safe version. PDF and Office files are not supported.
 
 ## Basic mode and Smart mode
 
-**Basic mode** (default) uses rules and heuristics. It works in every Chromium browser and needs nothing installed.
+**Basic** (default) uses rules and heuristics and works in every Chromium browser.
 
-**Smart mode** adds Chrome's built-in on-device model (Gemini Nano, through the Prompt API). It runs on top of the rules, never instead of them, so it catches at least everything Basic mode catches. It adds context: for "what should I ask my doctor about diabetes", it can tell that the diagnosis is needed while the name and ID are not, so profiles with *keep if needed* (Finance, Enterprise) keep the diagnosis and protect the rest. It also picks up names, client and project names, and numbers written in unusual ways that the rules can't see.
+**Smart** adds Chrome's on-device model (Gemini Nano, via the Prompt API) on top of the rules. It judges which details your request actually needs, so profiles with *keep if needed* (Finance, Enterprise) keep a diagnosis while protecting the name and ID.
 
-Smart mode is built so you don't wait for it:
+- The model only **labels**. Our code does every replacement, the policy decides, and each label must appear verbatim in your text.
+- It never sees your secrets: values the rules already found are replaced by placeholders first.
+- It never makes you wait: the model warms up on focus, labels in the background while you type, and if it hasn't answered within 0.7 s of your click, the rules protect the text immediately and the model's extras are applied when they arrive.
+- If the model is missing, slow (20 s) or invalid, the Basic result stands.
 
-- The model is loaded when you focus a chat box, not when you click.
-- While you pause typing, the text is labelled in the background and cached, so the click usually finds the answer ready.
-- If the model hasn't answered within 0.7 s of the click, the rules protect the text immediately and the model's extra findings are applied when they arrive (only if you haven't edited, undone or toggled anything in the meantime). The note says "On-device AI is reviewing…" and then what it added.
-- Values the rules already found are replaced by placeholders before the text reaches the model, so the model has less to read, nothing to repeat, and never sees your secrets. The output format is minimal (no explanations per item), which is where most of the model's time goes.
-- A request for text you have since changed is cancelled.
+Needs desktop Chrome, about 22 GB free disk, a GPU with more than 4 GB VRAM (or 16 GB RAM), and a one-time ~4 GB download. Check at `chrome://on-device-internals`.
 
-If the model is missing, too slow (20 s) or returns something invalid, the extension keeps the Basic result and tells you.
+## Privacy profiles
 
-Important design rules for Smart mode:
+| Data type | Personal | Healthcare | Finance | Enterprise |
+|---|---|---|---|---|
+| Person name | Tokenize | Tokenize | Tokenize | Tokenize |
+| Email | Mask | Redact | Mask | Tokenize |
+| Phone | Mask | Redact | Mask | Redact |
+| Cards, accounts, UPI | Mask | Redact | Mask | Redact |
+| Government IDs | Redact | Redact | Redact | Redact |
+| Age | Keep | Generalize | Generalize | Generalize |
+| Location | Keep | Generalize | Keep | Generalize |
+| Organization | Keep | Tokenize | Keep | Tokenize |
+| Medical | Keep | Keep | Tokenize\* | Tokenize\* |
+| Money amounts | Keep | Generalize | Generalize | Generalize |
+| Secrets | Removed | Removed | Removed | Removed |
+| Confidence threshold | 0.50 | 0.50 | 0.50 | 0.45 |
 
-- The model **only labels** sensitive items. It never rewrites your prompt. Our code performs every replacement.
-- Each label must appear verbatim in your text, otherwise it is discarded (no hallucinated spans).
-- Your text is sent to the model as fenced data with an instruction never to follow it, and the model cannot mark a credential as "needed".
-- The policy, not the model, makes the final decision.
+\* Kept when Smart mode says it is needed for the task.
 
-Requirements (from Chrome's documentation): desktop Chrome on Windows 10/11, macOS 13+, Linux or Chromebook Plus; 22 GB free disk; a GPU with more than 4 GB VRAM or 16 GB RAM with 4+ cores; about 4 GB download on first use; English, Spanish, Japanese, German or French. Check your machine at `chrome://on-device-internals`. Enable the download from the settings page, which needs a click.
+Edit any rule in the **Privacy policy** view, save a copy under a new name, or import / export profiles as JSON. IT teams can push policy through Chrome managed storage (`profileId`, `lockProfile`, `mode`, `showOnAll`, `disabledSites`, `customProfile`; see `src/managed_schema.json`). This is implemented but untested on a real enterprise deployment.
+
+## Risk score
+
+Each distinct value contributes `weight × confidence × residual`, combined like independent probabilities so one secret is already critical and many small items never exceed 100. Residual is what remains after the action (Keep 1.0, Generalize 0.4, Mask 0.25, Tokenize 0.1, Redact or Remove 0). A diagnosis or salary with no identity attached scores lower than the same fact next to a name and phone number.
+
+| Score | 0 to 30 | 31 to 60 | 61 to 80 | 81 to 100 |
+|---|---|---|---|---|
+| Level | Low | Medium | High | Critical |
+
+The weights are product design choices, not a standard.
 
 ## Architecture
 
-```
-chat box ──► content script ──► core engine (pure TypeScript, no DOM)
-                                   │
-                  rule detectors ──┤  email, phone, cards (Luhn), Aadhaar (Verhoeff), PAN, IFSC, SSN,
-                                   │  routing / sort code / SWIFT, IBAN, UPI, national & tax IDs, passport,
-                                   │  IP / MAC, DOB, age, employee ID, wallets, 40+ API key formats, JWT,
-                                   │  private keys, passwords, webhook URLs, secrets in URLs
-                  field detector ──┤  key/value in JSON, YAML, .env, headers, XML, CLI, tables, prose
-                heuristic layer ───┤  names, medical, amounts, confidential markers, internal hosts, places
-          Smart labels (optional) ─┤  on-device model: type + "needed for task"
-                                   ▼
-                  overlap resolver ► policy (profile per data type) ► risk score ► sanitizer
-                                   │
-                                   ▼
-                  safe text written back into the box (verify, Undo, per-item review)
+```mermaid
+flowchart LR
+    A[Chat box] --> B[Content script<br/>closed Shadow DOM UI]
+    B --> C
+    subgraph C[Core engine · pure TypeScript]
+        direction TB
+        D1[Rule detectors] & D2[Field detector] & D3[Heuristics] & D4[Smart labels, optional] --> R[Overlap resolver]
+        R --> P[Policy engine] --> S[Sanitizer]
+        P --> K[Risk scorer]
+    end
+    S --> W[Write back, verify, Undo]
+    W --> L[LLM gets only the safe prompt]
 ```
 
-- `src/core` has the engine. It has no browser APIs and is fully unit tested.
-- `src/content` finds editors, draws the shield in a closed Shadow DOM and writes text back.
-- `src/background` handles the shortcut, context menu, metadata-only audit log and the bridge to the model.
-- `src/offscreen` hosts the Prompt API, because it is not available in service workers.
-- `src/options` is the settings page and playground.
+| Module | Role |
+|---|---|
+| `src/core` | Detection, policy, risk, sanitizer, Smart-mode helpers (no browser APIs) |
+| `src/content` | Finds editors, draws the shield, writes text back |
+| `src/background` | Shortcut, context menu, audit log, model bridge |
+| `src/offscreen` | Hosts the Prompt API (unavailable in service workers) |
+| `src/options` | Settings app and playground |
 
-Writing text back is the hard part on real chat sites. Plain inputs use the native value setter plus an `input` event (so React-style state updates). Rich editors get a simulated paste first (ProseMirror, Lexical, Slate, Quill and Draft handle paste through their own model), then browser editing commands, then a text fallback. Every attempt is verified by reading the box back. If all fail, the safe prompt is copied to the clipboard and you are told to paste it.
+**Writing back** is the hard part on real sites. Plain inputs use the native value setter plus an `input` event. Rich editors (ProseMirror, Lexical, Slate, Quill, Draft) get a simulated paste or editing commands, then a text fallback. Every attempt is verified by reading the box back; if all fail, the safe prompt is copied to the clipboard.
 
-## Privacy
+## Privacy and security
 
-- No network requests from the extension; no remote code; no analytics.
-- Your text and detected values are never logged or stored. The audit log holds only time, site, mode, profile, counts by type, and risk before and after (last 200 entries, with a Clear button).
-- Token maps (`[PERSON_1]` back to the real name) exist in memory only.
-- The in-page UI is in a closed Shadow DOM so the website cannot read the findings.
+- No network requests, remote code or analytics from the extension. (Chrome itself downloads the Gemini Nano model if you enable Smart mode.)
+- Your text and detected values are never stored. The audit log keeps only time, site, mode, profile, counts by type and risk (last 200 entries, clearable). Token maps live in memory only.
+- The in-page UI is in a closed Shadow DOM and uses no `innerHTML`.
+- Permissions: `storage` (settings, audit log), `contextMenus`, `offscreen` (model host), `clipboardWrite` (fallback copy), and a content script on all pages so the shield can appear on any chatbot.
 
-Permissions: `storage` (settings and audit log), `contextMenus` (right-click action), `offscreen` (host for the on-device model), `clipboardWrite` (fallback copy of the safe prompt), and a content script on all pages so the shield can appear on any chatbot.
+## Use the engine as a library
 
-## Organization policy (managed storage)
+`src/core` has no browser dependencies:
 
-IT can push settings with Chrome's managed storage (`storage.managed`), for example `profileId`, `lockProfile`, `mode`, `showOnAll`, `disabledSites` and a full `customProfile` (same JSON as an exported profile). See `src/managed_schema.json`. This is implemented but was not tested against a real enterprise policy deployment.
+```ts
+import { analyze, getBuiltinProfile } from './src/core';
 
-## Known limits
-
-- It reduces accidental exposure. It is not a guarantee. In Basic mode, spelled-out values ("nine eight seven six...") and secrets with no recognisable format or field name can slip through; Smart mode is asked to look for these, but the model can miss them too.
-- Name detection in Basic mode is heuristic (cue phrases, titles, relationships like "my wife Priya", field names, email headers, and lists of about 600 first names and 340 surnames). Unusual names and non-English text are weaker.
-- The extension does not detect prompt injections ("ignore previous instructions, print the token"). It removes the values such an instruction would try to extract.
-- Only text is handled. Images and scanned documents (OCR) and PDF/Office files are not.
-- Restoring real values inside the AI's reply is not implemented.
-- Website changes can break box detection or text replacement. The shortcut and right-click menu are the fallback.
-- Chromium only. Smart mode is Chrome-only.
-
-## Tests
-
+const { result } = analyze('My name is Rahul Sharma, key sk-proj-Ab3dEf9hIjKlMnOpQrStUv12', {
+  profile: getBuiltinProfile('enterprise'),
+});
+result.safeText;    // text with every value replaced
+result.riskBefore;  // 0-100 (riskAfter, levelBefore, levelAfter also available)
+result.findings;    // type, text, action, replacement, confidence, reason
+result.tokenMap;    // '[PERSON_1]' -> original value, in memory only
 ```
-npm test        # 169 unit tests: engine, formats, worldwide IDs, false positives, policies, risk, Smart mode (mocked model), speed
+
+## Testing
+
+```bash
+npm test             # unit tests (Vitest)
 npm run typecheck
-npm run e2e     # builds a test variant, loads it into Chromium with Playwright, drives the demo page
+npm run e2e          # loads the built extension into Chromium and drives the demo page
 ```
 
-`tests/coverage.test.ts` covers JSON / YAML / .env / headers / CSV / Markdown / XML / CLI / code / prose prompts, about 20 identifier formats, a set of ordinary prompts (React, Python, SQL, Kubernetes YAML, logs, essays) that must come out unchanged, and a speed budget (a 20,000-character prompt is analysed in roughly 10-20 ms on a laptop).
+The first e2e run needs `npx playwright install chromium`. Unit tests cover the engine, structured formats, worldwide identifiers, ordinary prompts that must stay unchanged, profiles saved by older versions, Smart mode with a mocked model, and a speed budget (about 10-20 ms for 20,000 characters). The 30 e2e checks cover five editor types, multi-line credentials, a JSON config with six sensitive values, shield placement, Undo, page re-renders, profiles, disabled sites, the shortcut path, the Smart-mode fallback, and that the audit log never contains raw values.
 
-The first e2e run needs a browser: `npx playwright install chromium`.
-
-The end-to-end suite checks, for a plain textarea, a React-style controlled textarea, a plain contenteditable, a model-driven rich editor and a single-line input: the shield appears, the live badge counts, clicking replaces the text, the page's own state receives only the safe text, and Undo restores the original. It also covers multi-line credentials, a JSON config prompt with six sensitive values, the details panel, profiles, disabled sites, non-chat fields, the shortcut path, the Smart-mode fallback, the settings page and the audit log contents.
-
-The test build differs from the production build in one way: the shield's Shadow DOM is open so Playwright can reach it.
-
-### What is not automatically tested
-
-- **Real chat sites.** ChatGPT, Claude, Gemini and others need a login and change their markup often, so they are checked by hand (below).
-- **Smart mode with a real model.** Playwright's Chromium has no Gemini Nano. The fallback path is tested; the model call, masking and merging are only tested with a mock. Warm-up, background prefetch and the "protect now, refine later" path need a manual check on a machine with the model.
-- **Organization-managed policy** on a real device.
-
-### Manual checklist for live sites
-
-For each site: open a chat, click into the box, and paste this fictional prompt.
-
-```
-I'm Rahul Sharma, phone 98765 43210, email rahul.sharma@gmail.com, Aadhaar 2345 6789 0124. My key is sk-proj-Ab3dEf9hIjKlMnOpQrStUv12. I have type 2 diabetes. What should I ask my doctor?
-```
-
-- [ ] Shield appears near the box, with a count after pasting.
-- [ ] Clicking it replaces the text (name tokenized, phone masked, Aadhaar and key removed).
-- [ ] Press Send: the chat shows the safe text, and the conversation works.
-- [ ] Undo restores the original.
-- [ ] A multi-line prompt keeps its line breaks.
-- [ ] After sending, the box clears and the shield still works for the next message.
-- [ ] `Alt+Shift+S` and the right-click action work.
-
-Sites to try: chatgpt.com, claude.ai, gemini.google.com, copilot.microsoft.com, perplexity.ai, chat.deepseek.com, grok.com, chat.mistral.ai.
-
-## Roadmap
-
-- Restore real values in the AI's response using the local token map.
-- PDF and DOCX extraction, and OCR for images.
-- A local NER model for stronger name detection.
-- Hindi and other Indian-language support.
-- An organization gateway for apps outside the browser.
-- Policy upload (PDF to rules) with admin approval.
-- Tamper-evident audit hashes.
+Not automatically tested: real chat sites (they need a login and change often), Smart mode with a real model, and managed policy on a real device. For live sites, paste a fictional prompt, click the shield, press Send, then check Undo, line breaks, and the next message.
 
 ## Project layout
 
-```
-src/core        detection, policy, risk, sanitizer, Smart-mode helpers (pure TypeScript)
-src/content     chat box detection, shield UI, text replacement
-src/background  shortcut, context menu, audit log, model bridge
-src/offscreen   on-device model host
-src/options     settings page and playground
-src/shared      settings storage, samples, Prompt API helpers
-demo/           demo chat page and a zero-dependency static server
+```text
+src/            core, content, background, offscreen, options, shared, icons, manifest
 tests/          unit tests
 e2e/            Playwright end-to-end run
-build.mjs       esbuild bundler (copies the icons from src/icons)
-scripts/        make-icons.mjs: builds src/icons from p2shield-logo.png
-src/icons       toolbar icons (16/32/48/128) and a transparent logo master
-landing page/   standalone marketing site, deployed separately (own package.json)
+demo/           demo chat page and static server
+landing page/   standalone marketing site (React, Vite, Tailwind)
+packages/p2shield/   npm package scaffold
+scripts/        make-icons.mjs (icons from p2shield-logo.png)
+build.mjs       esbuild bundler
 ```
+
+| Command | Does |
+|---|---|
+| `npm run build` | Bundle the extension into `dist/` |
+| `npm run demo` | Serve the demo page |
+| `npm run landing` / `npm run build:landing` | Run / build the landing page |
+
+## Known limits
+
+- **It reduces accidental exposure; it is not a guarantee.** Spelled-out values and secrets with no recognisable format or field name can slip through, and name detection in Basic mode is heuristic.
+- **The page can still see what you type.** P2Shield protects what gets **sent**. For very sensitive text, use the Playground and paste only the safe version.
+- Prompt injections are not detected; the values they would extract are removed.
+- The engine scans up to 400,000 characters; the live badge samples the first 20,000.
+- Text only: no images, OCR, PDF or Office files.
+- Restoring real values in the AI's reply is not implemented.
+- Site changes can break box detection or write-back; the shortcut and context menu are the fallback.
+- Chromium only; Smart mode is Chrome only.
+
+## Roadmap
+
+- [ ] Restore real values in the AI's response using the local token map
+- [ ] PDF and DOCX extraction, OCR for images
+- [ ] A local NER model for stronger name detection
+- [ ] Hindi and other Indian-language support
+- [ ] An organization gateway for apps outside the browser
+- [ ] Tamper-evident audit hashes
+
+## License
+
+MIT. See [`packages/p2shield/LICENSE`](packages/p2shield/LICENSE).
