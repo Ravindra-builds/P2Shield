@@ -221,7 +221,7 @@ export function detectRules(text: string): Detection[] {
   for (const m of text.matchAll(
     cueRe('a\\/c|acct?\\.?|account|bank[\\s_-]*account|beneficiary[\\s_-]*account|savings[\\s_-]*account|checking[\\s_-]*account', '\\d[\\d -]{4,22}\\d'),
   )) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     const digits = onlyDigits(m[1]);
     if (digits.length < 6 || digits.length > 18) continue;
     push(mk('BANK_ACCOUNT', s, e, m[1], 0.95, 'rule', 'Account-length number after an account cue'));
@@ -236,27 +236,27 @@ export function detectRules(text: string): Detection[] {
 
   // ---- Bank routing identifiers
   for (const m of text.matchAll(cueRe('routing|aba|rtn|transit|ach[\\s_-]*routing', '\\d{9}'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     const ok = abaValid(m[1]);
     push(mk('ROUTING_NUMBER', s, e, m[1], ok ? 0.96 : 0.8, 'rule', ok ? 'ABA routing number (valid checksum)' : 'Nine-digit number after a routing cue', 'ROUTING_NUMBER'));
   }
   for (const m of text.matchAll(cueRe('sort[\\s_-]*code', '\\d{2}[- ]?\\d{2}[- ]?\\d{2}', 'number|no\\.?'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('ROUTING_NUMBER', s, e, m[1], 0.92, 'rule', 'UK sort code', 'SORT_CODE'));
   }
   for (const m of text.matchAll(cueRe('bsb', '\\d{3}[- ]?\\d{3}'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('ROUTING_NUMBER', s, e, m[1], 0.9, 'rule', 'Australian BSB number', 'BSB'));
   }
   for (const m of text.matchAll(cueRe('swift|bic|swift[\\s_/-]*bic', '[A-Za-z]{6}[A-Za-z0-9]{2}(?:[A-Za-z0-9]{3})?'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     if (m[1] !== m[1].toUpperCase()) continue;
     push(mk('ROUTING_NUMBER', s, e, m[1], 0.92, 'rule', 'SWIFT / BIC bank code', 'SWIFT_BIC'));
   }
 
   // ---- Passport (cue required)
   for (const m of text.matchAll(cueRe('passport', '[A-Za-z]{1,2}\\d{6,8}|\\d{8,9}|[A-Za-z]\\d{2}[A-Za-z0-9]{5,6}'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     if (!/\d{3}/.test(m[1])) continue;
     push(mk('PASSPORT', s, e, m[1], 0.92, 'rule', 'Passport-format number after the word "passport"'));
   }
@@ -292,7 +292,7 @@ export function detectRules(text: string): Detection[] {
       ...text.matchAll(new RegExp(`\\b(?:call|text|reach|ring|sms|message|whatsapp)\\s+(?:me|us|him|her|them)\\s+(?:at|on)\\s+(${PHONE_VALUE})(?![A-Za-z0-9])`, 'gid')),
     ];
     for (const m of cued) {
-      const [s, e] = m.indices![1];
+      const [s, e] = m.indices![1]!;
       const digits = onlyDigits(m[1]);
       if (digits.length < 7 || digits.length > 15) continue;
       push(mk('PHONE', s, e, m[1].trim(), 0.92, 'rule', 'Number after a phone cue'));
@@ -318,7 +318,7 @@ export function detectRules(text: string): Detection[] {
     const dob =
       /(?:\bdob\b|\bd\.o\.b\.?|date[\s_-]of[\s_-]birth|birth[\s_-]?date|birthday|born(?: on)?)["']?\s*(?:is|was|:|=|-)?\s*["']?(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}(?:st|nd|rd|th)?\s+[A-Za-z]{3,9},?\s+\d{4}|[A-Za-z]{3,9}\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4})/gid;
     for (const m of text.matchAll(dob)) {
-      const [s, e] = m.indices![1];
+      const [s, e] = m.indices![1]!;
       push(mk('DATE_OF_BIRTH', s, e, m[1], 0.93, 'rule', 'Date next to a date-of-birth cue'));
     }
   }
@@ -332,7 +332,7 @@ export function detectRules(text: string): Detection[] {
     ];
     for (const re of patterns) {
       for (const m of text.matchAll(re)) {
-        const [s, e] = m.indices![1];
+        const [s, e] = m.indices![1]!;
         const n = Number(m[1]);
         if (n < 1 || n > 110) continue;
         push(mk('AGE', s, e, m[1], 0.8, 'rule', 'Age of a person'));
@@ -342,7 +342,7 @@ export function detectRules(text: string): Detection[] {
 
   // ---- Employee identifiers
   for (const m of text.matchAll(/\b(?:emp(?:loyee)?|staff)[\s_-]*(?:id|no\.?|number|code)?\s*(?:is|was|[:=#-])?\s*((?:[A-Z]{1,4}-?)?\d{3,9})\b/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('EMPLOYEE_ID', s, e, m[1], 0.86, 'rule', 'Employee identifier'));
   }
   for (const m of text.matchAll(/\bEMP[-_]?\d{3,9}\b/g)) {
@@ -351,7 +351,7 @@ export function detectRules(text: string): Detection[] {
 
   // ---- Postal code (cue required)
   for (const m of text.matchAll(/\b(?:pin\s?code|pincode|postal code|post ?code|zip(?: code)?)\s*(?:is|:|=|-)?\s*(\d{5,6}(?:-\d{4})?)\b/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('LOCATION', s, e, m[1], 0.85, 'rule', 'Postal code', 'POSTAL_CODE'));
   }
 
@@ -409,12 +409,12 @@ export function detectIdNumbers(text: string): Detection[] {
     add(m.index!, m.index! + m[0].length, m[0], cue ? 0.97 : 0.88, 'US Social Security Number format', 'SSN');
   }
   for (const m of text.matchAll(cueRe('ssn|ss#|social[\\s_-]*security|itin', '\\d{3}[- ]?\\d{2}[- ]?\\d{4}'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     add(s, e, m[1], 0.96, 'Number after a Social Security cue', 'SSN');
   }
   // Canada SIN
   for (const m of text.matchAll(cueRe('sin|social[\\s_-]*insurance', '\\d{3}[- ]?\\d{3}[- ]?\\d{3}'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     add(s, e, m[1], luhnAny(onlyDigits(m[1])) ? 0.95 : 0.82, 'Canadian Social Insurance Number', 'SIN');
   }
   // UK National Insurance number
@@ -423,7 +423,7 @@ export function detectIdNumbers(text: string): Detection[] {
   }
   // UK NHS number
   for (const m of text.matchAll(cueRe('nhs', '\\d{3}[- ]?\\d{3}[- ]?\\d{4}'))) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     add(s, e, m[1], nhsValid(onlyDigits(m[1])) ? 0.97 : 0.86, 'UK NHS number', 'MEDICAL_RECORD_ID');
   }
   // India GSTIN
@@ -452,7 +452,7 @@ export function detectIdNumbers(text: string): Detection[] {
   // only count when followed by an explicit "number / no / # / id / : / =".
   for (const [cue, label, reason] of ID_CUES) {
     for (const m of text.matchAll(cueRe(cue, ID_VALUE, 'number|num|no\\.?|nr|#|code|id'))) {
-      const [s] = m.indices![1];
+      const [s] = m.indices![1]!;
       const prefix = text.slice(m.index!, s);
       if (AMBIGUOUS_ID_CUE.test(prefix) && !/(?:number|num|no\.?|nr|#|\bid\b|[:=]|\bis\b)/i.test(prefix.replace(AMBIGUOUS_ID_CUE, ''))) {
         continue;
@@ -532,7 +532,7 @@ export function detectCredentials(text: string): Detection[] {
   for (const m of text.matchAll(
     /(?:seed[\s_-]*phrase|recovery[\s_-]*phrase|secret[\s_-]*recovery[\s_-]*phrase|mnemonic|backup[\s_-]*phrase|seed[\s_-]*words)["']?\s*(?:is|was|:|=|-)?\s*["']?((?:[a-z]{3,8}[\s,]+){11,23}[a-z]{3,8})/gid,
   )) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('SECRET', s, e, m[1], 0.95, 'rule', 'Wallet recovery phrase', 'SEED_PHRASE'));
   }
 
@@ -557,17 +557,17 @@ export function detectCredentials(text: string): Detection[] {
 
   // Bearer / Basic / Token authorization
   for (const m of text.matchAll(/\b(?:Bearer|Token)\s+([A-Za-z0-9._~+/=-]{16,})/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     if (!hasMixed(m[1])) continue;
     push(mk('SECRET', s, e, m[1], 0.92, 'rule', 'Bearer token'));
   }
   for (const m of text.matchAll(/\bAuthorization["']?\s*[:=]\s*["']?Basic\s+([A-Za-z0-9+/=]{8,})/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('SECRET', s, e, m[1], 0.92, 'rule', 'Basic authorization value'));
   }
   // curl -u user:password / --user user:password
   for (const m of text.matchAll(/(?:^|\s)(?:-u|--user)\s+["']?[^\s:"']+:([^\s"']{3,})/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     if (isPlaceholder(m[1])) continue;
     push(mk('PASSWORD', s, e, m[1], 0.92, 'rule', 'Password in a command-line credential'));
   }
@@ -577,14 +577,14 @@ export function detectCredentials(text: string): Detection[] {
     const explicit =
       /(?<![A-Za-z])(?:password|passwd|pwd|passcode|passphrase|passwort|kennwort|contrase[nñ]a|senha|mot[\s_-]de[\s_-]passe|wachtwoord)["'\x60]?[^\S\r\n]*(?:[:=](?!=)|->|=>)[^\S\r\n]*["'\x60]?([^\s"'\x60,;]{3,})/gid;
     for (const m of text.matchAll(explicit)) {
-      const [s] = m.indices![1];
+      const [s] = m.indices![1]!;
       const v = m[1].replace(/[.,)\]}]+$/, '');
       if (isPlaceholder(v) || v.length < 3 || looksLikeCodeRef(v)) continue;
       push(mk('PASSWORD', s, s + v.length, v, 0.93, 'rule', 'Value assigned to a password field'));
     }
     const spoken = /\b(?:password|passwd|pwd|passcode|passphrase)\s+(?:is|was|=)\s+["'\x60]?([^\s"'\x60,;]{4,})/gid;
     for (const m of text.matchAll(spoken)) {
-      const [s] = m.indices![1];
+      const [s] = m.indices![1]!;
       const v = m[1].replace(/[.,)]+$/, '');
       if (isPlaceholder(v) || looksLikeCodeRef(v)) continue;
       if (!(/\d/.test(v) || /[^A-Za-z0-9]/.test(v) || (/[a-z]/.test(v) && /[A-Z]/.test(v)))) continue;
@@ -593,19 +593,19 @@ export function detectCredentials(text: string): Detection[] {
     // "PIN code 834001" is an Indian postal code, not a PIN.
     const pin = /(?<![A-Za-z])(?:pin(?![\s_-]*code)|mpin|upi\s?pin|atm\s?pin|otp|cvv2?|cvc2?|cvn|security code|verification code|one[\s-]time (?:password|code))(?![A-Za-z])[\s_-]*(?:number|no\.?)?["']?\s*(?:is|=|:)?\s*["']?(\d{3,8})\b/gid;
     for (const m of text.matchAll(pin)) {
-      const [s, e] = m.indices![1];
+      const [s, e] = m.indices![1]!;
       push(mk('PASSWORD', s, e, m[1], 0.86, 'rule', 'PIN / OTP / security code', 'PIN'));
     }
   }
 
   // Credentials embedded in URLs
   for (const m of text.matchAll(/\b[a-z][a-z0-9+.-]*:\/\/([^\s:@/]*:[^\s@/]+)@[^\s]+/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     // 0.99 so it beats the EMAIL rule, which also matches "pass@host".
     push(mk('CREDENTIAL_URL', s, e, m[1], 0.99, 'rule', 'Username and password inside a URL'));
   }
   for (const m of text.matchAll(/[?&](?:token|access_token|refresh_token|id_token|api[_-]?key|apikey|key|secret|client_secret|sig|signature|auth|password|pwd|code)=([^&\s#"']{8,})/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     push(mk('SECRET', s, e, m[1], 0.88, 'rule', 'Secret-looking URL parameter'));
   }
 
@@ -621,7 +621,7 @@ export function detectCredentials(text: string): Detection[] {
   for (const m of text.matchAll(
     /\b(?:token|api[\s_-]?key|access[\s_-]?key|secret(?:[\s_-]?key)?|private[\s_-]?key|client[\s_-]?secret|credential|bearer|auth(?:orization)?[\s_-]?(?:code|token|key))\b[^\S\n]{1,3}(?:is[^\S\n]+|[:=-][^\S\n]*)?["'\x60]?([A-Za-z0-9_\-+/=.]{12,})/gid,
   )) {
-    const [s] = m.indices![1];
+    const [s] = m.indices![1]!;
     const v = m[1].replace(/[.,]+$/, '');
     if (!hasMixed(v) || isPlaceholder(v)) continue;
     push(mk('SECRET', s, s + v.length, v, 0.84, 'rule', 'Long token after a credential cue'));
@@ -780,7 +780,7 @@ export function detectMedical(text: string): Detection[] {
   // Cue phrases: "diagnosed with X"
   const cue = /\b(?:diagnosed with|diagnosis of|suffering from|suffers from|history of|treated for|symptoms of|tested positive for|prescribed)\s+((?:an?\s+|the\s+)?[a-z][a-z-]*(?:\s+[a-z][a-z-]*){0,2})/gid;
   for (const m of text.matchAll(cue)) {
-    let [s, e] = m.indices![1];
+    let [s, e] = m.indices![1]!;
     let phrase = m[1].replace(/^(?:an?|the)\s+/i, '');
     phrase = phrase.split(/\b(?:and|but|who|which|for|since|because|so|that|with|last|this|every|in|at|on|by)\b/i)[0].trim();
     if (!phrase) continue;
@@ -795,7 +795,7 @@ export function detectMedical(text: string): Detection[] {
   }
   // Blood group
   for (const m of text.matchAll(/\bblood\s*(?:group|type)\s*(?:is|:|=|-)?\s*((?:A|B|AB|O)[+-]|(?:A|B|AB|O)\s?(?:positive|negative|pos|neg))/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     out.push(mk('MEDICAL', s, e, m[1], 0.85, 'heuristic', 'Blood group', 'MEDICAL_CONDITION'));
   }
   return out;
@@ -859,13 +859,13 @@ export function detectConfidential(text: string): Detection[] {
     out.push(mk('CONFIDENTIAL', m.index!, m.index! + m[0].length, m[0], 0.86, 'rule', 'AWS resource name (includes the account id)', 'CLOUD_RESOURCE'));
   }
   for (const m of text.matchAll(/\b(?:aws[\s_-]*)?account[\s_-]*id["']?\s*(?:is|:|=)?\s*["']?(\d{12})\b/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     out.push(mk('CONFIDENTIAL', s, e, m[1], 0.86, 'rule', 'Cloud account id', 'CLOUD_RESOURCE'));
   }
 
   // User names inside file paths: C:\Users\rohit\..., /home/priya/..., /Users/sam/...
   for (const m of text.matchAll(/(?:\b[A-Za-z]:\\+(?:Users|Documents and Settings)\\+|(?<![\w.])\/(?:Users|home)\/)([^\\/\s"'<>:*?|]{2,40})/gid)) {
-    const [s, e] = m.indices![1];
+    const [s, e] = m.indices![1]!;
     if (SYSTEM_USERS.has(m[1].toLowerCase()) || /^[$%<{]/.test(m[1])) continue;
     out.push(mk('CONFIDENTIAL', s, e, m[1], 0.74, 'heuristic', 'User name inside a file path', 'USERNAME'));
   }

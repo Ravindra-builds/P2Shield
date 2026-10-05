@@ -481,7 +481,7 @@ function extract(kind: Kind, raw: Raw): Hit | null {
         VEHICLE: ['ID_NUMBER', 'VEHICLE_REG', 'Vehicle identifier field'],
         EMPLOYEE_ID: ['EMPLOYEE_ID', undefined, 'Employee ID field'],
       };
-      const [type, label, why] = map[kind];
+      const [type, label, why] = map[kind]!;
       return { s: r[0], e, type, conf: 0.91 + sp, label, why };
     }
     case 'PHONE': {
