@@ -71,11 +71,31 @@
     @apply border-border;
   }
   html {
-    scroll-behavior: smooth;
-    scroll-snap-type: y proximity;
+    scroll-padding-top: 6rem;
+  }
+  /* Slightly larger base size on big screens: everything in rem scales with it. */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 112.5%;
+    }
+  }
+  @media (min-width: 1536px) {
+    html {
+      font-size: 125%;
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
   }
   body {
     @apply bg-background text-foreground antialiased selection:bg-sky-100 selection:text-sky-900;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 3px;
+    border-radius: 0.5rem;
   }
 }

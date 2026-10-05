@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>P2Shield – Presentation &amp; Demo Script</title>
+<style>
+  @page { size: A4; margin: 14mm 14mm 16mm 14mm; }
+  :root {
+    --navy: #1F497D; --ink: #1A1A1A; --muted: #5B6573; --line: #D9DEE7;
+    --m1: #1F6FB2; --m2: #6F4FB0; --m3: #2E9E5B; --m4: #D97706;
+    --m1bg: #EAF2FB; --m2bg: #F1ECFA; --m3bg: #E8F6EE; --m4bg: #FDF2E3;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; font-size: 10.5pt; line-height: 1.45; color: var(--ink); }
+  h1 { font-size: 22pt; margin: 0; color: var(--navy); letter-spacing: -0.3px; }
+  h2 { font-size: 14pt; color: var(--navy); margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--line); }
+  h3 { font-size: 11.5pt; margin: 14px 0 6px; }
+  p { margin: 0 0 6px; }
+  ul { margin: 4px 0 6px; padding-left: 18px; }
+  li { margin: 2px 0; }
+  code, .mono { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; background: #F1F4F9; padding: 0 3px; border-radius: 3px; }
+  .page-break { break-before: page; }
+  .avoid { break-inside: avoid; }
+
+  /* cover */
+  .cover { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 4px solid var(--navy); padding-bottom: 10px; }
+  .cover .sub { color: var(--muted); font-size: 10.5pt; margin-top: 4px; }
+  .cover .meta { text-align: right; font-size: 9.5pt; color: var(--muted); white-space: nowrap; padding-left: 16px; }
+  .cover .meta b { color: var(--ink); }
+  .oneliner { margin: 12px 0 4px; padding: 10px 14px; border-radius: 8px; background: linear-gradient(90deg, #E9E2F8, #DDEBFB); font-size: 12pt; font-weight: 600; color: #2B2A6B; }
+  .oneliner small { display: block; font-weight: 400; font-size: 9pt; color: var(--muted); }
+
+  /* roles table */
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 8px; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: 9pt; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); background: #F6F8FB; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; color: #fff; font-weight: 700; font-size: 9pt; white-space: nowrap; }
+  .t1 { background: var(--m1); } .t2 { background: var(--m2); } .t3 { background: var(--m3); } .t4 { background: var(--m4); }
+  .name { display: inline-block; min-width: 120px; border-bottom: 1px dashed #9AA3B2; color: #9AA3B2; font-size: 9pt; }
+
+  /* timeline */
+  .timeline { display: flex; height: 30px; border-radius: 6px; overflow: hidden; margin: 8px 0 2px; font-size: 8.5pt; font-weight: 700; color: #fff; }
+  .timeline div { display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.1; }
+  .ticks { position: relative; height: 14px; font-size: 8pt; color: var(--muted); }
+  .ticks span { position: absolute; top: 0; transform: translateX(-50%); }
+  .ticks span:first-child { transform: none; }
+  .ticks span:last-child { transform: translateX(-100%); }
+  tr { break-inside: avoid; }
+  .qa { font-size: 9.5pt; line-height: 1.34; }
+  .qa td, .qa th { padding: 5px 7px; }
+  .compact { font-size: 9.5pt; line-height: 1.34; }
+  .compact .warn { margin: 6px 0; padding: 6px 10px; }
+  .compact h2 { margin: 12px 0 6px; }
+  .compact td, .compact th { padding: 4px 7px; }
+  .compact .box { padding: 6px 10px; }
+  .compact li { margin: 1px 0; }
+
+  /* speaker sections */
+  .speaker { margin-top: 14px; border-radius: 10px; padding: 10px 14px 6px; }
+  .speaker.s1 { background: var(--m1bg); } .speaker.s2 { background: var(--m2bg); }
+  .speaker.s3 { background: var(--m3bg); } .speaker.s4 { background: var(--m4bg); }
+  .shead { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .shead .who { font-size: 13pt; font-weight: 800; }
+  .s1 .who { color: var(--m1); } .s2 .who { color: var(--m2); } .s3 .who { color: var(--m3); } .s4 .who { color: var(--m4); }
+  .shead .when { font-size: 9pt; color: var(--muted); font-weight: 600; }
+  .slide { font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin: 10px 0 4px; }
+  .slide span { color: var(--ink); }
+
+  .say { background: #fff; border-left: 4px solid; border-radius: 0 6px 6px 0; padding: 7px 10px; margin: 5px 0; font-size: 11pt; line-height: 1.5; }
+  .s1 .say { border-color: var(--m1); } .s2 .say { border-color: var(--m2); } .s3 .say { border-color: var(--m3); } .s4 .say { border-color: var(--m4); }
+  .say p { margin: 0 0 5px; } .say p:last-child { margin-bottom: 0; }
+  .point { color: var(--muted); font-style: italic; font-size: 9.5pt; }
+
+  .do, .see, .cue { display: flex; gap: 8px; align-items: flex-start; margin: 5px 0; font-size: 9.5pt; }
+  .do b.k, .see b.k, .cue b.k { flex: 0 0 auto; font-size: 8pt; padding: 1px 6px; border-radius: 4px; color: #fff; margin-top: 2px; letter-spacing: .4px; }
+  .do b.k { background: #475569; }
+  .see b.k { background: var(--m3); }
+  .cue b.k { background: #B91C1C; }
+  .cue { font-weight: 700; color: #B91C1C; }
+  .handoff { margin: 6px 0 4px; font-size: 9.5pt; font-weight: 600; }
+  .handoff::before { content: "\2192  "; }
+
+  .step { background: #fff; border-radius: 8px; padding: 8px 10px; margin: 8px 0; border: 1px solid #CDE9D7; }
+  .step h4 { margin: 0 0 4px; font-size: 10.5pt; color: var(--m3); display: flex; justify-content: space-between; }
+  .step h4 small { color: var(--muted); font-weight: 600; }
+  .step .say { margin: 4px 0; font-size: 10.5pt; }
+
+  /* Q&A */
+  .qa td:first-child { width: 33%; font-weight: 600; }
+  .qa td:last-child { width: 46px; text-align: center; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .box h3 { margin-top: 2px; }
+  .check li { list-style: none; position: relative; padding-left: 4px; }
+  .check { padding-left: 16px; }
+  .check li::before { content: "\2610"; position: absolute; left: -16px; color: var(--navy); }
+  .warn { background: #FFF7E6; border: 1px solid #F5C98A; border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 9.5pt; }
+</style>
+</head>
+<body>
+
+<!-- ===================================================== PAGE 1 ===================================================== -->
+<div class="cover">
+  <div>
+    <h1>P2Shield &middot; Presentation &amp; Demo Script</h1>
+    <div class="sub">Team TechKnights &middot; BITSHIFT 2026 &middot; Problem Statement 10: Pre-LLM Privacy Firewall for Sensitive Data Protection</div>
+  </div>
+  <div class="meta"><b>~8 min</b> talk + live demo<br />then Q&amp;A</div>
+</div>
+
+<div class="oneliner">&ldquo;P2Shield cleans your prompt on your own device, before any AI sees it.&rdquo;
+  <small>Every member should be able to say this sentence. If you lose your place, come back to it.</small></div>
+
+<h2>Who does what</h2>
+<table>
+  <tr><th style="width:24%">Member</th><th>Role</th><th style="width:13%">Slides</th><th style="width:15%">Time</th></tr>
+  <tr><td><span class="tag t1">Member 1</span><br /><span class="name">name</span></td><td><b>Opener.</b> Hook, the problem, our solution, before/after example.</td><td>1, 2</td><td>0:00 &ndash; 1:30</td></tr>
+  <tr><td><span class="tag t2">Member 2</span><br /><span class="name">name</span></td><td><b>Tech lead.</b> Architecture, detectors, privacy actions.</td><td>3</td><td>1:30 &ndash; 3:00</td></tr>
+  <tr><td><span class="tag t3">Member 3</span><br /><span class="name">name</span></td><td><b>Demo driver.</b> Sits at the laptop the whole time, changes slides for everyone, runs the live demo.</td><td>Browser</td><td>3:00 &ndash; 5:30</td></tr>
+  <tr><td><span class="tag t4">Member 4</span><br /><span class="name">name</span></td><td><b>Closer.</b> Feasibility, impact, research, closing line, starts Q&amp;A.</td><td>4, 5, 6</td><td>5:30 &ndash; 7:30</td></tr>
+</table>
+
+<div class="timeline">
+  <div style="width:18.75%; background:var(--m1)">M1 &middot; Slides 1&ndash;2</div>
+  <div style="width:18.75%; background:var(--m2)">M2 &middot; Slide 3</div>
+  <div style="width:31.25%; background:var(--m3)">M3 &middot; Live demo</div>
+  <div style="width:25%; background:var(--m4)">M4 &middot; Slides 4&ndash;6</div>
+  <div style="width:6.25%; background:#94A3B8">buffer</div>
+</div>
+<div class="ticks"><span style="left:0">0:00</span><span style="left:18.75%">1:30</span><span style="left:37.5%">3:00</span><span style="left:68.75%">5:30</span><span style="left:93.75%">7:30</span><span style="left:100%">8:00</span></div>
+
+<h2>How to read this script</h2>
+<div class="say" style="border-color:#1F497D">Text in a white box like this is what you <b>say</b>. Learn the meaning, not every word. Speak slowly, especially the numbers.</div>
+<div class="do"><b class="k">DO</b><span>An action: click, point, switch window.</span></div>
+<div class="see"><b class="k">ON SCREEN</b><span>What the audience should see. If it looks different, don't panic: carry on and explain.</span></div>
+<div class="cue"><b class="k">NEXT SLIDE</b><span>Member 3 moves to the next slide when the speaker reaches this point.</span></div>
+
+<h2>Stage setup</h2>
+<ul>
+  <li>One laptop runs both the slides and the demo. <b>Member 3</b> sits there and switches between them with <code>Alt</code>+<code>Tab</code>.</li>
+  <li>The other three stand on the side of the screen. The current speaker steps forward; everyone else stays still and looks at the screen or the judges.</li>
+  <li>Pass over by name (&ldquo;Now Priya will show&hellip;&rdquo;). Replace &ldquo;Member 2/3/4&rdquo; below with real names when you rehearse.</li>
+  <li>Each member&rsquo;s part starts on a new page, so everyone can print just their own sheet: Member 1 page 2, Member 2 page 3, Member 3 pages 4&ndash;5, Member 4 page 6.</li>
+</ul>
+
+<!-- ===================================================== MEMBER 1 ===================================================== -->
+<div class="page-break"></div>
+<div class="speaker s1">
+  <div class="shead"><span class="who">Member 1 &middot; Opener</span><span class="when">0:00 &ndash; 1:30 &middot; about 200 words</span></div>
+
+  <div class="slide">Slide 1 &middot; <span>Title</span> &middot; 20 seconds</div>
+  <div class="say">
+    <p>Good morning, judges. We are team <b>TechKnights</b>, and this is <b>P2Shield</b>, our solution for <b>Problem Statement 10</b>: a Pre-LLM Privacy Firewall.</p>
+    <p>A quick question first. Who here has pasted something into ChatGPT that they probably shouldn&rsquo;t have? <span class="point">(pause, smile)</span></p>
+    <p>That is exactly the problem we solve.</p>
+  </div>
+  <div class="cue"><b class="k">NEXT SLIDE</b><span>Slide 2</span></div>
+
+  <div class="slide">Slide 2 &middot; <span>Problem &amp; proposed solution</span> &middot; 70 seconds</div>
+  <div class="do"><b class="k">DO</b><span>Point to the three numbers in the PROBLEM panel, one by one.</span></div>
+  <div class="say">
+    <p>Look at these numbers. <b>77%</b> of people who use AI at work paste data into their prompts. Almost <b>40%</b> of what goes into AI tools is sensitive. And in India, the DPDP Act allows penalties of up to <b>250 crore rupees</b> for failing to protect personal data.</p>
+    <p>Names, Aadhaar numbers, card numbers, API keys, medical reports. Once you press Send, that data sits on someone else&rsquo;s server. Today, companies either ban AI, or push every prompt through a cloud proxy, which is one more server holding your data.</p>
+  </div>
+  <div class="do"><b class="k">DO</b><span>Point to the coloured flow strip at the top right.</span></div>
+  <div class="say">
+    <p><b>P2Shield</b> is a Chrome extension. A small shield appears on any AI chat box. <b>One click</b> finds 28 types of sensitive data and rewrites the prompt right inside the box, before anything is sent.</p>
+  </div>
+  <div class="do"><b class="k">DO</b><span>Point to the BEFORE / AFTER boxes at the bottom.</span></div>
+  <div class="say">
+    <p>Here is real output. Rahul&rsquo;s name, phone, Aadhaar and email are replaced. But &ldquo;Type 2 diabetes&rdquo; stays, because the AI needs it to answer. Risk drops from <b>97, Critical</b>, to <b>23, Low</b>.</p>
+    <p>And it all happens <b>on your device</b>. No server, no account, nothing leaves the browser.</p>
+  </div>
+  <div class="handoff">&ldquo;Member 2 will show you how it works inside.&rdquo;</div>
+  <div class="cue"><b class="k">NEXT SLIDE</b><span>Slide 3</span></div>
+</div>
+
+<!-- ===================================================== MEMBER 2 ===================================================== -->
+<div class="page-break"></div>
+<div class="speaker s2">
+  <div class="shead"><span class="who">Member 2 &middot; Tech lead</span><span class="when">1:30 &ndash; 3:00 &middot; about 210 words</span></div>
+
+  <div class="slide">Slide 3 &middot; <span>Technical approach</span> &middot; 90 seconds</div>
+  <div class="do"><b class="k">DO</b><span>Move your hand left to right along the architecture diagram as you talk.</span></div>
+  <div class="say">
+    <p>Thank you. Here is the full flow, from left to right.</p>
+    <p>You type in any chat box: ChatGPT, Claude, Gemini, or any other site. Our shield sits on top of it, inside a <b>closed Shadow DOM</b>, so the website cannot read what we find.</p>
+    <p>The core engine is pure <b>TypeScript</b> and runs on the device. Three detectors work together. <b>Rule detectors</b> use real checksums: Luhn for cards, Verhoeff for Aadhaar, mod-97 for IBAN, so a random 12-digit number is not flagged as Aadhaar. The <b>field detector</b> reads structure, like JSON, .env files, headers and tables. <b>Heuristics</b> catch names, medical terms and amounts. If the laptop supports it, Chrome&rsquo;s built-in <b>Gemini Nano</b> adds context, also on the device.</p>
+    <p>Then the resolver merges overlaps, the <b>policy engine</b> picks an action for each data type, we <b>score the risk</b> before and after, and the sanitizer writes the safe text back into the box, with Undo.</p>
+  </div>
+  <div class="do"><b class="k">DO</b><span>Point to the Privacy Actions panel.</span></div>
+  <div class="say">
+    <p>There are six actions: mask, tokenize, redact, generalize, remove secret, and keep. For example, age 27 becomes &ldquo;20 to 30&rdquo;. <b>Passwords and keys are always removed</b>, in every profile.</p>
+    <p>One rule we never break: the AI model only <b>labels</b>. Our policy makes every decision.</p>
+  </div>
+  <div class="handoff">&ldquo;Enough slides. Member 3 will show it live.&rdquo;</div>
+  <div class="do"><b class="k">DO</b><span>Member 3: <code>Alt</code>+<code>Tab</code> to Chrome.</span></div>
+</div>
+
+<!-- ===================================================== MEMBER 3 ===================================================== -->
+<div class="page-break"></div>
+<div class="speaker s3">
+  <div class="shead"><span class="who">Member 3 &middot; Live demo</span><span class="when">3:00 &ndash; 5:30 &middot; about 2.5 minutes</span></div>
+  <p style="font-size:9.5pt">Tabs ready, in this order: <b>(1)</b> Demo chatbots page <code>http://localhost:4173/</code> &nbsp; <b>(2)</b> P2Shield settings (Privacy policy set to <b>Personal</b>) &nbsp; <b>(3)</b> optional: chatgpt.com, logged in.</p>
+
+  <div class="say"><p>This is a test page with chat boxes that behave like real AI sites. It runs on this laptop, offline.</p></div>
+
+  <div class="step avoid">
+    <h4>Step 1 &middot; A patient&rsquo;s prompt <small>45 s</small></h4>
+    <div class="do"><b class="k">DO</b><span>Click into box <b>1. Plain textarea</b>. In <b>Sample</b>, choose <b>Patient asking for doctor questions</b>.</span></div>
+    <div class="say">A patient is asking AI for advice. See the shield at the top right of the box? The number shows how much it found, and the colour shows the risk.</div>
+    <div class="do"><b class="k">DO</b><span>Click the shield.</span></div>
+    <div class="see"><b class="k">ON SCREEN</b><span><code>Protected 5 items &middot; Risk 99 &rarr; 63 (High)</code>. The text now has <code>[PERSON_1]</code>, <code>98*** ***10</code>, <code>[REDACTED_AADHAAR]</code>, <code>r******@gmail.com</code>.</span></div>
+    <div class="say">One click. The name is tokenized, phone and email are masked, Aadhaar is removed. The diagnosis stays.</div>
+    <div class="do"><b class="k">DO</b><span>Click <b>Details</b>, scroll once, close it. Then press the <b>Send &uarr;</b> button and point to &ldquo;The page received&rdquo;.</span></div>
+    <div class="say">Every finding is listed, and you can untick one to keep it. And look: the page only received the safe version.</div>
+  </div>
+
+  <div class="step avoid">
+    <h4>Step 2 &middot; A developer pastes secrets <small>30 s</small></h4>
+    <div class="do"><b class="k">DO</b><span>Box <b>2. Framework-controlled textarea</b> &rarr; Sample <b>Developer sharing credentials</b> &rarr; click the shield &rarr; <b>Send &uarr;</b>.</span></div>
+    <div class="see"><b class="k">ON SCREEN</b><span><code>Protected 3 items &middot; Risk 100 &rarr; 0 (Low)</code>. All three values become <code>[SECRET_REMOVED]</code>.</span></div>
+    <div class="say">This box keeps its own state, like the React apps many chat sites are built with. The OpenAI key, the AWS key and the database password are gone. Secrets are always removed.</div>
+  </div>
+
+  <div class="step avoid">
+    <h4>Step 3 &middot; Playground <small>30 s</small></h4>
+    <div class="do"><b class="k">DO</b><span>Go to tab 2 (or click the P2Shield icon in the toolbar) &rarr; <b>Playground</b> &rarr; example <b>Credentials</b> &rarr; <b>Analyse</b>.</span></div>
+    <div class="see"><b class="k">ON SCREEN</b><span>Before <b>100 Critical</b> &rarr; After <b>4 Low</b>; original highlighted on the left, safe version on the right.</span></div>
+    <div class="say">Teams can test any text or file here: txt, csv, json or log. Highlighted on the left, safe version on the right. Same engine as the shield.</div>
+  </div>
+
+  <div class="step avoid">
+    <h4>Step 4 &middot; Switch to the Healthcare policy <small>40 s</small></h4>
+    <div class="do"><b class="k">DO</b><span><b>Privacy policy</b> &rarr; choose <b>Healthcare</b>. Back to tab 1 &rarr; box 1 &rarr; Sample <b>Patient asking&hellip;</b> &rarr; click the shield.</span></div>
+    <div class="see"><b class="k">ON SCREEN</b><span><code>Protected 8 items &middot; Risk 99 &rarr; 41 (Medium)</code>. <code>[ORGANIZATION_1] in Jharkhand</code>, <code>20-30</code>, <code>[REDACTED_PHONE]</code>, <code>[REDACTED_EMAIL]</code>; &ldquo;Type 2 diabetes&rdquo; is kept.</span></div>
+    <div class="say">Same prompt, Healthcare policy. It&rsquo;s stricter: the hospital is hidden, the city becomes the state, the age becomes a range. The medical facts stay, so the answer is still useful. A company can push this policy to every employee&rsquo;s browser.</div>
+  </div>
+
+  <div class="step avoid" style="border-style:dashed">
+    <h4>Step 5 &middot; Optional, on a real site <small>15 s, only if time and Wi-Fi allow</small></h4>
+    <div class="do"><b class="k">DO</b><span>Tab 3 (chatgpt.com): paste the patient prompt, press <code>Alt</code>+<code>Shift</code>+<code>S</code>. Do <b>not</b> press Send.</span></div>
+    <div class="say">It works the same on real sites. There&rsquo;s also a keyboard shortcut and a right-click option.</div>
+  </div>
+
+  <div class="handoff">&ldquo;That&rsquo;s the working prototype. Member 4 will explain why it&rsquo;s feasible, and the impact.&rdquo;</div>
+  <div class="do"><b class="k">DO</b><span><code>Alt</code>+<code>Tab</code> back to the slideshow and go to <b>slide 4</b>.</span></div>
+  <div class="warn"><b>Offline proof (optional):</b> if you skip step 5, switch Wi-Fi off before the demo and say &ldquo;this laptop is offline right now&rdquo;. It shows that nothing leaves the device.</div>
+</div>
+
+<!-- ===================================================== MEMBER 4 ===================================================== -->
+<div class="page-break"></div>
+<div class="speaker s4">
+  <div class="shead"><span class="who">Member 4 &middot; Closer</span><span class="when">5:30 &ndash; 7:30 &middot; about 270 words</span></div>
+
+  <div class="slide">Slide 4 &middot; <span>Feasibility &amp; viability</span> &middot; 50 seconds</div>
+  <div class="say">
+    <p>What you just saw is not a mock-up. It is built and tested: <b>169 unit tests</b> and <b>30 end-to-end browser tests</b>, all passing.</p>
+    <p><span class="point">(point to the bar chart)</span> This is real engine output. On every sample the risk drops. For developer keys and config files, from 100 to almost zero.</p>
+    <p><span class="point">(point to the line chart)</span> And it&rsquo;s fast: <b>20,000 characters in under 8 milliseconds</b>, so you never wait.</p>
+    <p><span class="point">(point to Risks &amp; Mitigation)</span> We planned for what can go wrong. If a chat site changes its editor, we check every write and fall back to the clipboard. Checksums cut false alarms, and every item can be undone.</p>
+    <p>There is no server to run, so the cost is almost zero: <b>free for individuals</b>, and a <b>per-seat plan</b> for organisations.</p>
+  </div>
+  <div class="cue"><b class="k">NEXT SLIDE</b><span>Slide 5</span></div>
+
+  <div class="slide">Slide 5 &middot; <span>Impact &amp; benefits</span> &middot; 35 seconds</div>
+  <div class="say">
+    <p>Who benefits? Students and individuals asking AI about health or money. Hospitals: clinical facts stay, patient identity goes. Banks: cards and accounts are masked. Developers: keys are removed before debugging. And companies and government offices, who can <b>adopt AI instead of banning it</b>, with one policy for every browser.</p>
+    <p>Next, we will restore real names in the AI&rsquo;s reply, support PDFs and images, and add <b>Hindi and other Indian languages</b>.</p>
+  </div>
+  <div class="cue"><b class="k">NEXT SLIDE</b><span>Slide 6</span></div>
+
+  <div class="slide">Slide 6 &middot; <span>Research</span> &middot; 25 seconds</div>
+  <div class="say">
+    <p>Our research supports this. A single data breach in India now costs <b>25.5 crore rupees</b> on average. The data loss prevention market will grow about four times, to <b>13.8 billion dollars by 2033</b>. And <b>82%</b> of AI pastes happen in personal accounts that company tools can&rsquo;t see. That&rsquo;s why the protection has to live on the device.</p>
+  </div>
+
+  <div class="slide">Closing &middot; 15 seconds &middot; <span>whole team steps forward</span></div>
+  <div class="say">
+    <p>To sum up: with P2Shield, anyone can <b>use AI freely and share only what the task needs</b>. On your device, in one click, before the LLM ever sees it.</p>
+    <p>Thank you. We&rsquo;re happy to take your questions.</p>
+  </div>
+  <div class="do"><b class="k">DO</b><span>Member 3 leaves slide 6 on screen, with the demo tab ready for &ldquo;can you show&hellip;&rdquo; questions.</span></div>
+</div>
+
+<!-- ===================================================== Q&A ===================================================== -->
+<div class="page-break"></div>
+<h2 style="margin-top:0">Q&amp;A: likely questions</h2>
+<p style="font-size:9.5pt">The listed member answers in under 30 seconds; others add one line only if needed. If you don&rsquo;t know, say so honestly: &ldquo;That isn&rsquo;t in the prototype yet. Here&rsquo;s how we would do it&hellip;&rdquo;. Never claim a feature we don&rsquo;t have.</p>
+<table class="qa">
+  <tr><th>Question</th><th>Short answer</th><th>Who</th></tr>
+  <tr><td>How is this different from existing DLP tools or ChatGPT Enterprise?</td><td>They block AI or send prompts through a cloud proxy (one more server holding your data), and need IT setup. ChatGPT Enterprise protects only one product. P2Shield works on any chat site, even personal accounts, fully offline, and <b>rewrites</b> instead of blocking, so people keep working.</td><td><span class="tag t1">M1</span></td></tr>
+  <tr><td>What if it misses something?</td><td>It reduces exposure; it isn&rsquo;t a 100% guarantee. Rules catch formats and field names, Smart mode adds context, and the user sees every finding in Details. Known weak spots: numbers written as words and unusual names.</td><td><span class="tag t2">M2</span></td></tr>
+  <tr><td>Won&rsquo;t it flag normal text by mistake?</td><td>Checksums (Luhn, Verhoeff, mod-97) and field-name context keep false alarms low. A test set of normal prompts (code, SQL, essays, logs) must come out unchanged. Any item can be unticked.</td><td><span class="tag t2">M2</span></td></tr>
+  <tr><td>Does the AI still answer well with placeholders?</td><td>Yes. Tokens stay consistent (<code>[PERSON_1]</code> is always the same person), generalizing keeps meaning (age range, state), and facts the task needs, such as a diagnosis, are kept.</td><td><span class="tag t1">M1</span></td></tr>
+  <tr><td>Can the website still read what I type?</td><td>Honestly, a site&rsquo;s own scripts can see its text box while you type. P2Shield protects what gets <b>sent</b>, and our findings sit in a closed Shadow DOM. For very sensitive text, use the Playground and paste only the safe version.</td><td><span class="tag t2">M2</span></td></tr>
+  <tr><td>Do you store any data?</td><td>No text and no values. The audit log keeps only time, site, counts and risk (last 200 entries, clearable). The token map lives in memory only.</td><td><span class="tag t4">M4</span></td></tr>
+  <tr><td>What about prompt injection?</td><td>We don&rsquo;t detect injections, but we remove the values an injection would try to steal. The AI model gets the text as fenced data and can never mark a secret as &ldquo;needed&rdquo;.</td><td><span class="tag t2">M2</span></td></tr>
+  <tr><td>What hardware does Smart mode need?</td><td>Chrome&rsquo;s built-in Gemini Nano: desktop Chrome, about 22 GB free disk, a GPU with more than 4 GB VRAM or 16 GB RAM. It&rsquo;s optional; without it, Basic mode protects instantly.</td><td><span class="tag t2">M2</span></td></tr>
+  <tr><td>Which browsers? Mobile? Desktop apps?</td><td>Chromium browsers: Chrome, Edge, Brave. Smart mode is Chrome only. Desktop apps and mobile are on the roadmap (an organisation gateway).</td><td><span class="tag t3">M3</span></td></tr>
+  <tr><td>How does a company enforce it?</td><td>IT pushes the policy through Chrome managed storage: profile, lock, disabled sites. It&rsquo;s implemented, but we haven&rsquo;t tested it on a real company rollout yet.</td><td><span class="tag t4">M4</span></td></tr>
+  <tr><td>How will you make money?</td><td>Free for individuals; per-seat plan for organisations (central policy, audit log, support). No servers, so running costs stay very low.</td><td><span class="tag t4">M4</span></td></tr>
+  <tr><td>Is it built for India?</td><td>Yes: Aadhaar with the Verhoeff check, PAN, GSTIN, IFSC, UPI, Indian phone numbers, and amounts rounded in lakh. Hindi support is next.</td><td><span class="tag t1">M1</span></td></tr>
+  <tr><td>Can it put the real names back in the AI&rsquo;s answer?</td><td>Not yet; it&rsquo;s first on our roadmap. The token map stays on the device, so we can swap <code>[PERSON_1]</code> back on the user&rsquo;s screen only.</td><td><span class="tag t3">M3</span></td></tr>
+  <tr><td>Large documents? PDFs or images?</td><td>Text up to 400,000 characters; 20,000 characters take under 8 ms. PDF, DOCX and OCR for images are on the roadmap.</td><td><span class="tag t3">M3</span></td></tr>
+</table>
+
+<!-- ===================================================== CHECKLIST ===================================================== -->
+<div class="page-break"></div>
+<div class="compact">
+<h2 style="margin-top:0">Before you go on stage</h2>
+<div class="grid2">
+  <div class="box avoid">
+    <h3>The day before</h3>
+    <ul class="check">
+      <li>In the project folder: <code>npm install</code>, then <code>npm run build</code>.</li>
+      <li>Chrome &rarr; <code>chrome://extensions</code> &rarr; Developer mode &rarr; <b>Load unpacked</b> &rarr; choose the <code>dist</code> folder. Pin the P2Shield icon.</li>
+      <li>Full rehearsal 2&ndash;3 times with a timer. Write the real names into this script.</li>
+      <li>Record a <b>2-minute backup video</b> of the demo on the same laptop.</li>
+      <li>Export the deck as PDF too, in case PowerPoint fails.</li>
+    </ul>
+  </div>
+  <div class="box avoid">
+    <h3>30 minutes before</h3>
+    <ul class="check">
+      <li>Start the demo page: <code>npm run demo</code> (leave that terminal open).</li>
+      <li>Tab 1: <code>http://localhost:4173/</code>. Tab 2: P2Shield settings, <b>Privacy policy = Personal</b>. Tab 3 (optional): chatgpt.com, logged in.</li>
+      <li>Browser zoom 125&ndash;150% so judges can read. Close all other tabs.</li>
+      <li>Turn on Focus Assist / Do Not Disturb. Laptop charged, HDMI adapter ready.</li>
+      <li>Test <code>Alt</code>+<code>Shift</code>+<code>S</code> once (<code>chrome://extensions/shortcuts</code>).</li>
+      <li>Slideshow open on slide 1. Practise one <code>Alt</code>+<code>Tab</code> both ways.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="warn"><b>After every rehearsal, set Privacy policy back to Personal.</b> Demo step 4 switches it to Healthcare, and the step 1 numbers only match with Personal.</div>
+
+<h2>If something goes wrong</h2>
+<table>
+  <tr><th style="width:34%">Problem</th><th>What to do (and say)</th></tr>
+  <tr><td>The shield doesn&rsquo;t appear</td><td>Click into the box again. If it still isn&rsquo;t there, press <code>Alt</code>+<code>Shift</code>+<code>S</code>, or right-click &rarr; <b>Protect this text with P2Shield</b>.</td></tr>
+  <tr><td>The demo page won&rsquo;t load</td><td>Go straight to the <b>Playground</b> (tab 2): &ldquo;Let me show you the same engine in our playground.&rdquo;</td></tr>
+  <tr><td>Different numbers on screen</td><td>Probably the wrong profile. Don&rsquo;t read the number aloud; describe what changed instead (&ldquo;the name and Aadhaar are gone&rdquo;).</td></tr>
+  <tr><td>Laptop or projector fails</td><td>Play the backup video, or present the PDF from another laptop.</td></tr>
+</table>
+<p style="font-size:9.5pt"><b>Golden rule:</b> never debug on stage for more than 10 seconds. Smile, use the backup, and keep going.</p>
+
+<h2>If you only get 5 minutes, or you&rsquo;re running late</h2>
+<table>
+  <tr><th style="width:24%">Member</th><th>Keep</th><th style="width:12%">Time</th></tr>
+  <tr><td><span class="tag t1">Member 1</span></td><td>Skip the opening question. Say the three numbers, then the one-line solution and the before/after.</td><td>1:00</td></tr>
+  <tr><td><span class="tag t2">Member 2</span></td><td>Only the flow (box &rarr; detectors &rarr; policy &rarr; safe text) and &ldquo;the AI only labels&rdquo;.</td><td>0:45</td></tr>
+  <tr><td><span class="tag t3">Member 3</span></td><td>Demo steps 1 and 2 only.</td><td>1:30</td></tr>
+  <tr><td><span class="tag t4">Member 4</span></td><td>Tests + speed (slide 4), one line on who benefits, then the closing line.</td><td>1:15</td></tr>
+</table>
+
+<h2>Delivery tips</h2>
+<ul>
+  <li>Talk to the judges, not to the screen. Point at the part of the slide you&rsquo;re talking about.</li>
+  <li>Slow down on numbers: &ldquo;seventy-seven percent&rdquo;, &ldquo;two hundred and fifty crore&rdquo;.</li>
+  <li>Use our words: <b>on-device</b>, <b>one click</b>, <b>before the LLM sees it</b>. Avoid jargon unless a judge asks.</li>
+  <li>Use only the fictional sample data in the demo, never a real Aadhaar, phone number or API key.</li>
+</ul>
+</div>
+
+</body>
+</html>

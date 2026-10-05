@@ -190,7 +190,7 @@ function showView(id: ViewId, moveFocus: boolean): void {
     if (a.dataset.view === id) a.setAttribute('aria-current', 'page');
     else a.removeAttribute('aria-current');
   });
-  document.title = `${VIEW_TITLES[id]} · TechKnights Privacy Firewall`;
+  document.title = `${VIEW_TITLES[id]} · P2Shield`;
   window.scrollTo(0, 0);
   if (moveFocus) $(`t-${id}`).focus({ preventScroll: true });
 }

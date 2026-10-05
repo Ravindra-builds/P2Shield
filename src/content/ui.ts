@@ -160,7 +160,7 @@ export class ShieldUi {
   private panelOpen = false;
 
   constructor(private cb: UiCallbacks) {
-    this.host.setAttribute('data-techknights-pf', '');
+    this.host.setAttribute('data-p2shield', '');
     this.host.style.cssText = 'all: initial; position: fixed; z-index: 2147483647;';
     // Closed in production so page scripts can't read the findings. Open only in the e2e test build.
     this.root = this.host.attachShadow({ mode: __E2E__ ? 'open' : 'closed' });
@@ -173,7 +173,7 @@ export class ShieldUi {
       this.root.append(style);
     }
     this.button.type = 'button';
-    this.button.setAttribute('aria-label', 'Protect this prompt with TechKnights Privacy Firewall');
+    this.button.setAttribute('aria-label', 'Protect this prompt with P2Shield');
     this.button.title = 'Protect this prompt (Alt+Shift+S)';
     this.button.append(shieldIcon(), this.badge);
     this.button.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus in the editor
@@ -258,7 +258,7 @@ export class ShieldUi {
       this.button.setAttribute('aria-label', `Protect this prompt: ${count} sensitive item${count === 1 ? '' : 's'} found (${level} risk)`);
     } else {
       this.badge.style.display = 'none';
-      this.button.setAttribute('aria-label', 'Protect this prompt with TechKnights Privacy Firewall');
+      this.button.setAttribute('aria-label', 'Protect this prompt with P2Shield');
     }
   }
 

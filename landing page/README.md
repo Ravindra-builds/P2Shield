@@ -1,88 +1,41 @@
-# TechKnights Privacy Firewall — Landing Page
+# P2Shield landing page
 
-Modern, interactive landing page for **TechKnights Privacy Firewall** (Pre-LLM Sensitive Data Protection Chrome Extension), built with:
-- **React 18** + **TypeScript**
-- **Tailwind CSS** (dark mode cyber security aesthetic + custom tokens)
-- **shadcn/ui** architecture
-- **Framer Motion** & **Lucide React**
+A static, self-contained site for the P2Shield Chrome extension. It has its own `package.json` and shares no code with the extension, so it can be deployed on its own.
 
----
+Stack: React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Lucide icons. The font (Plus Jakarta Sans) is bundled, so the page makes no third-party requests.
 
-## Quick Start
+## Run locally
 
-### 1. From root directory
-```bash
-npm run landing
-```
-
-### 2. Or from inside `landing page/`
 ```bash
 cd "landing page"
 npm install
-npm run dev
+npm run dev        # http://localhost:3000
 ```
 
-Visit [http://localhost:3000](http://localhost:3000) to view the landing page.
+From the repository root, `npm run landing` does the same.
 
-To create a production build:
+## Build and deploy
+
 ```bash
-npm run build
+npm run build      # type-checks, then writes the static site to dist/
+npm run preview    # serve dist/ locally
 ```
 
----
+`dist/` is plain static files. Any static host works (Vercel, Netlify, Cloudflare Pages, GitHub Pages). Set the project root to `landing page`, the build command to `npm run build` and the output directory to `dist`.
 
-## Project Structure & shadcn/ui
+Hosting under a sub-path (for example GitHub Pages at `/repo-name/`)? Build with the base set:
 
-```
-landing page/
-├── components.json              # shadcn CLI configuration
-├── index.html                   # HTML entry point with dark theme
-├── package.json                 # Dependencies and build scripts
-├── postcss.config.js            # PostCSS configuration
-├── tailwind.config.js           # Tailwind theme tokens & spektr-cyan-50
-├── tsconfig.json                # TypeScript compiler & path alias configs
-├── vite.config.ts               # Vite configuration with @/ path alias
-├── components/                  # Root mirror for standard /components/ui
-│   └── ui/
-│       ├── animated-hero.tsx
-│       ├── button.tsx
-│       └── how-it-works.tsx
-└── src/
-    ├── App.tsx                  # Main landing page application
-    ├── main.tsx                 # React DOM mount point
-    ├── index.css                # Tailwind directives & CSS variables
-    ├── demo.tsx                 # Demo showcase
-    ├── lib/
-    │   └── utils.ts             # cn helper (clsx + tailwind-merge)
-    └── components/
-        ├── navbar.tsx           # Sticky navigation with download triggers
-        ├── firewall-simulator.tsx # Interactive sandbox testing real redactions
-        ├── features.tsx         # Hackathon requirements feature matrix
-        ├── profiles.tsx         # Personal, Healthcare, Finance, Enterprise
-        ├── installation.tsx     # Step-by-step Chrome load unpacked guide
-        ├── footer.tsx           # Footer with license and links
-        └── ui/                  # Primary shadcn component library
-            ├── animated-hero.tsx# Animated hero with text replacements
-            ├── button.tsx       # shadcn button component with CVA
-            └── how-it-works.tsx # 3-step pipeline component
+```bash
+npx vite build --base=/repo-name/
 ```
 
----
+## Edit the content
 
-## Component Updates & Customizations
+- Links and the logo path: `src/config.ts` (`REPO_URL`, `NPM_URL`, `NPM_INSTALL`; set `REPO_URL` to the final repository)
+- Hero: `src/components/ui/animated-hero.tsx`
+- How it works: `src/components/ui/how-it-works.tsx`
+- Install: `src/components/installation.tsx`
+- Navbar and footer: `src/components/navbar.tsx`, `src/components/footer.tsx`
+- Logo and favicon: `public/p2shield-logo.png`, `public/favicon.png`
 
-1. **`components/ui/animated-hero.tsx`**:
-   - Replaced *"Jump on a call"* with **"Download package"**
-   - Replaced *"Book a call"* / *"Sign up here"* with **"Download extension"**
-   - Implemented spring-animated rotating titles (`safe`, `private`, `air-gapped`, `leak-proof`, `compliant`)
-   - Configured custom `text-spektr-cyan-50` color token in `tailwind.config.js`
-
-2. **`components/ui/how-it-works.tsx`**:
-   - Features the 3-step pipeline architecture:
-     1. *Attach to Any Chatbox*
-     2. *Inspect & Sanitize Locally*
-     3. *Send Safe Prompt to LLM*
-   - Includes connecting line indicators and benefit bullet points.
-
-3. **`components/ui/button.tsx`**:
-   - Standard shadcn button built with `@radix-ui/react-slot` and `class-variance-authority`.
+`features.tsx`, `firewall-simulator.tsx`, `profiles.tsx` and `src/demo.tsx` are not used by the page.

@@ -1,89 +1,75 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { MoveRight, Download, ShieldCheck, Check } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight, Check, Package } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LOGO_SRC, NPM_URL, REPO_URL } from "@/config";
 
-interface HeroProps {
-  badgeText?: string;
-  badgeLink?: string;
-  headlinePrefix?: string;
-  rotatingTitles?: string[];
-  description?: string;
-  onDownloadPackage?: () => void;
-  onDownloadExtension?: () => void;
-}
+const TRUST = ["No network requests", "No account or analytics", "Works on ChatGPT, Claude, Gemini"];
 
-function Hero({
-  badgeText = "Pre-LLM Privacy Firewall • 100% On-Device",
-  badgeLink = "#how-it-works",
-  headlinePrefix = "AI prompts made",
-  rotatingTitles,
-  description = "Sanitize prompts locally on your device before any AI chatbot sees them. Zero network calls, zero server logs, and zero telemetry. Raw credentials and personal data never leave your browser.",
-  onDownloadPackage,
-  onDownloadExtension,
-}: HeroProps = {}) {
+function Hero() {
+  const reduce = useReducedMotion();
   const [titleNumber, setTitleNumber] = useState(0);
-  const titles = useMemo(
-    () => rotatingTitles || ["Completely Private", "100% Air-Gapped", "Zero-Leak", "Enterprise-Safe", "Audit-Compliant"],
-    [rotatingTitles]
-  );
+  const titles = useMemo(() => ["prompt", "privacy"], []);
 
+  // Rotate the highlighted word in a loop: "prompt" -> "privacy" -> "prompt" ...
+  // This is intentionally not gated on prefers-reduced-motion. The motion is a
+  // single short word inside a clipped box, and gating it hid the animation for
+  // anyone whose OS has animations turned off.
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (titleNumber === titles.length - 1) {
-        setTitleNumber(0);
-      } else {
-        setTitleNumber(titleNumber + 1);
-      }
+      setTitleNumber((n) => (n === titles.length - 1 ? 0 : n + 1));
     }, 2200);
     return () => clearTimeout(timeoutId);
   }, [titleNumber, titles]);
 
   return (
-    <section className="w-full min-h-[calc(100vh-1rem)] sm:min-h-screen flex flex-col justify-center items-center relative overflow-hidden pt-20 pb-8 sm:pt-24 sm:pb-12 border-b border-slate-200/90 snap-start">
-      {/* Background ambient radial glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[360px] bg-gradient-to-b from-sky-100/70 via-cyan-50/40 to-transparent blur-[110px] pointer-events-none rounded-full -z-10" />
+    <section
+      aria-labelledby="hero-title"
+      className="relative flex min-h-[100svh] items-center overflow-hidden"
+    >
+      {/* Background: soft glow and a faded grid */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(55%_55%_at_75%_40%,rgb(14_165_233/0.13),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgb(15_23_42/0.045)_1px,transparent_1px),linear-gradient(to_bottom,rgb(15_23_42/0.045)_1px,transparent_1px)] bg-[size:56px_56px] [mask-image:radial-gradient(ellipse_at_center,black_25%,transparent_75%)]" />
+      </div>
 
-      <div className="container mx-auto px-4 max-w-4xl relative z-10 flex flex-col items-center text-center my-auto">
-        {/* Top Announcement Pill */}
+      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 pb-16 pt-32 sm:px-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-10 lg:pb-12 lg:pt-28">
         <motion.div
-          initial={{ opacity: 0, y: -8 }}
+          initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-5 sm:mb-6"
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="text-center lg:text-left"
         >
-          <a href={badgeLink} className="group inline-block">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-sky-200/90 bg-white/95 backdrop-blur-md shadow-xs hover:border-sky-300 hover:shadow-sm transition-all">
-              <ShieldCheck className="w-4 h-4 text-sky-600" />
-              <span className="text-xs sm:text-sm font-semibold text-slate-700 tracking-tight">
-                {badgeText}
-              </span>
-              <MoveRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 group-hover:translate-x-0.5 transition-all" />
-            </div>
+          <a
+            href="#how-it-works"
+            className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-white/90 px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:border-sky-300 sm:text-sm"
+          >
+            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            Chrome extension · 100% on-device
           </a>
-        </motion.div>
 
-        {/* Main Headline - Professionally Proportioned */}
-        <div className="max-w-3xl mx-auto mb-4 sm:mb-5">
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.15]">
-            <span>{headlinePrefix}</span>
-            <span className="relative flex w-full justify-center overflow-hidden text-center min-h-[1.25em] mt-1.5 pb-1">
-              &nbsp;
+          <h1
+            id="hero-title"
+            className="mt-7 text-4xl font-extrabold leading-[1.1] tracking-tight text-slate-900 sm:text-5xl lg:text-[clamp(2.25rem,4.2vw,3.75rem)]"
+          >
+            <span className="sr-only">P2Shield: protect your prompt and privacy</span>
+            <span aria-hidden="true" className="block text-balance lg:whitespace-nowrap">
+              P2Shield: protect your
+            </span>
+            <span
+              aria-hidden="true"
+              className="relative mt-1 flex h-[1.3em] w-full justify-center overflow-hidden lg:justify-start"
+            >
               {titles.map((title, index) => (
                 <motion.span
-                  key={index}
-                  className="absolute font-extrabold bg-gradient-to-r from-sky-600 via-cyan-600 to-teal-700 bg-clip-text text-transparent"
-                  initial={{ opacity: 0, y: -50 }}
-                  transition={{ type: "spring", stiffness: 65, damping: 14 }}
+                  key={title}
+                  className="absolute bg-gradient-to-r from-sky-600 via-cyan-600 to-teal-700 bg-clip-text font-extrabold leading-[1.25] text-transparent"
+                  initial={{ opacity: 0, y: -100 }}
+                  transition={{ type: "spring", stiffness: 50 }}
                   animate={
                     titleNumber === index
-                      ? {
-                          y: 0,
-                          opacity: 1,
-                        }
-                      : {
-                          y: titleNumber > index ? -80 : 80,
-                          opacity: 0,
-                        }
+                      ? { y: 0, opacity: 1 }
+                      : { y: titleNumber > index ? -150 : 150, opacity: 0 }
                   }
                 >
                   {title}
@@ -91,61 +77,65 @@ function Hero({
               ))}
             </span>
           </h1>
-        </div>
 
-        {/* Subtitle with balanced line-height and max-width */}
-        <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed mb-7 sm:mb-8">
-          {description}
-        </p>
+          <p className="mx-auto mt-6 max-w-xl text-pretty text-base leading-7 text-slate-600 sm:text-lg sm:leading-8 lg:mx-0">
+            Finds personal data and secrets in your prompt and replaces them on your device. Nothing is sent anywhere.
+          </p>
 
-        {/* Action CTA Buttons - Balanced, Big and Beautiful */}
-        <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4 w-full sm:w-auto justify-center items-center mb-6">
-          {/* Download Extension Button (Primary) */}
-          <button
-            onClick={onDownloadExtension}
-            className="group relative w-full sm:w-auto inline-flex items-center justify-center gap-3 px-7 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-bold text-white bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-600 hover:from-sky-700 hover:via-sky-600 hover:to-cyan-700 shadow-md shadow-sky-500/25 hover:shadow-lg hover:shadow-sky-500/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap cursor-pointer"
-          >
-            <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white/95 flex-shrink-0" />
-            <span>Download extension</span>
-            <MoveRight className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
-          </button>
+          <div className="mt-9 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center lg:justify-start">
+            <Button
+              asChild
+              size="lg"
+              className="group h-12 gap-2 rounded-full bg-slate-900 px-7 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 hover:bg-slate-700 sm:text-base"
+            >
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+                Install P2Shield
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </a>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="h-12 gap-2 rounded-full border-slate-300 bg-white px-7 text-sm font-semibold text-slate-800 hover:border-slate-400 hover:bg-slate-50 sm:text-base"
+            >
+              <a href={NPM_URL} target="_blank" rel="noopener noreferrer">
+                <Package className="h-4 w-4" />
+                Download npm package
+              </a>
+            </Button>
+          </div>
 
-          {/* Download Package Button (Secondary) */}
-          <button
-            onClick={onDownloadPackage}
-            className="group w-full sm:w-auto inline-flex items-center justify-center gap-3 px-7 sm:px-8 py-3.5 sm:py-4 rounded-xl text-sm sm:text-base font-semibold text-slate-800 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 shadow-xs hover:shadow-sm hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 whitespace-nowrap cursor-pointer"
-          >
-            <Download className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 text-slate-600 group-hover:text-sky-600 transition-colors duration-200" />
-            <span>Download package</span>
-          </button>
-        </div>
+          <ul className="mt-9 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-slate-600 lg:justify-start">
+            {TRUST.map((t) => (
+              <li key={t} className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </motion.div>
 
-        {/* Trust Guarantees */}
-        <div className="flex flex-wrap items-center justify-center gap-5 text-xs text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-600 font-bold" />
-            Free & Open Source (MIT)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-600 font-bold" />
-            Zero Network Calls
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Check className="w-3.5 h-3.5 text-emerald-600 font-bold" />
-            Works on ChatGPT, Claude & Gemini
-          </span>
-        </div>
+        <motion.div
+          initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+          className="relative mx-auto w-full max-w-[240px] sm:max-w-[300px] lg:max-w-[20rem]"
+        >
+          <div aria-hidden="true" className="absolute inset-[-12%] rounded-full bg-sky-200/40 blur-3xl" />
+          <motion.img
+            src={LOGO_SRC}
+            alt="P2Shield logo: a shield crossed by a silver sweep"
+            width={453}
+            height={512}
+            animate={reduce ? undefined : { y: [0, -10, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            className="relative h-auto w-full drop-shadow-[0_28px_36px_rgb(15_23_42/0.2)]"
+          />
+        </motion.div>
       </div>
     </section>
   );
 }
 
-function HeroDemo() {
-  return (
-    <div className="block bg-background text-foreground min-h-screen">
-      <Hero />
-    </div>
-  );
-}
-
-export { Hero, HeroDemo };
+export { Hero };

@@ -5,11 +5,11 @@ import type { AuditEntry, Msg, SmartLabelReply, SmartState } from '../shared/set
 
 const AUDIT_KEY = 'audit';
 const AUDIT_MAX = 200;
-const MENU_ID = 'techknights-protect';
+const MENU_ID = 'p2shield-protect';
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create(
-    { id: MENU_ID, title: 'Protect this text with TechKnights', contexts: ['editable'] },
+    { id: MENU_ID, title: 'Protect this text with P2Shield', contexts: ['editable'] },
     () => void chrome.runtime.lastError,
   );
 });

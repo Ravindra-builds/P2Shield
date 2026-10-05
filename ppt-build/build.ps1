@@ -42,17 +42,18 @@ try {
   }
   foreach ($d in $del) { $d.Delete() }
 
-  [void](Add-Text $s1 40 108 480 66 @("<c=$NAVY>P2</c><c=0070C0>Shield</c>") @{ font = 'Arial Black'; size = 48; color = $NAVY; anchor = 3 })
-  [void](Add-Text $s1 42 174 470 44 'A pre-LLM privacy firewall that cleans every prompt on your own device, before any chatbot sees it.' @{ size = 15; color = '404040'; within = 1.05 })
-  [void](Add-Box $s1 1 42 226 72 4 @{ grad = @('22D3EE', '6D28D9'); gangle = 0 })
+  [void](Add-Text $s1 40 106 480 66 @("<c=$NAVY>P2</c><c=0070C0>Shield</c>") @{ font = 'Arial Black'; size = 48; color = $NAVY; anchor = 3 })
+  [void](Add-Text $s1 42 172 470 44 'A pre-LLM privacy firewall that cleans every prompt on your own device, before any chatbot sees it.' @{ size = 15; color = '404040'; within = 1.05 })
+  [void](Add-Box $s1 1 42 224 72 4 @{ grad = @('22D3EE', '6D28D9'); gangle = 0 })
 
   $tp = @(
+    "Problem Statement ID $NDASH <c=$NAVY>10</c>",
     "Problem Statement Title $NDASH <c=$NAVY>Pre-LLM Privacy Firewall for Sensitive Data Protection</c>",
     "Theme $NDASH <c=$NAVY>AI / Web3</c>",
     "PS Category $NDASH <c=$NAVY>Software</c>",
     "Team Name $NDASH <c=$NAVY>TechKnights</c>"
   )
-  [void](Add-Text $s1 40 250 470 230 $tp @{ size = 19; bold = $true; color = '000000'; bullet = $BUL; bcolor = '000000'; indent = 18; after = 16; within = 1.0 })
+  [void](Add-Text $s1 40 246 470 250 $tp @{ size = 19; bold = $true; color = '000000'; bullet = $BUL; bcolor = '000000'; indent = 18; after = 15; within = 1.0 })
 
   # Shield mark inside the big template hexagon, with a few "protected value" chips around it.
   $mark = Add-Image $s1 'p2shield-mark.png' 566 178 182 209 'P2Shield logo: a shield protecting a chat message with masked text'
@@ -183,7 +184,7 @@ try {
   [void](Add-Box $s3 5 232 128 536 154 @{ fill = 'FFFFFF'; line = $PURPLE; lw = 1.25; dash = 4; r = 10 })
   [void](Add-Text $s3 242 131 520 14 "CORE ENGINE  $DOT  on-device, pure TypeScript, no DOM" @{ size = 8.5; bold = $true; color = $PURPLE; anchor = 3 })
   $dets = @(
-    @{ i = 'binary'; c = $MID; t = 'Rule detectors'; d = 'regex + checksums, 40+ secret formats' },
+    @{ i = 'binary'; c = $MID; t = 'Rule detectors'; d = 'regex, checksums, 40+ secrets' },
     @{ i = 'braces'; c = $MID; t = 'Field detector'; d = 'JSON, YAML, .env, headers, tables' },
     @{ i = 'file-search'; c = $MID; t = 'Heuristics'; d = 'names, medical, amounts, hosts' },
     @{ i = 'sparkles'; c = $PURPLE; t = 'Smart labels (optional)'; d = 'Gemini Nano via Prompt API' }
@@ -371,8 +372,8 @@ try {
     [void](Add-Text $s4 ($xy[$k][0] - 18) ($pyb + 3) 36 12 $pts[$k][0] @{ size = 7.5; color = $INK; align = 2; anchor = 3 })
   }
   [void](Add-Text $s4 ($px1 - 70) ($pyb + 13) 70 11 'characters' @{ size = 7.5; color = $MUTED; align = 3; anchor = 3 })
-  [void](Add-Box $s4 5 ($xy[1][0] - 6) ($pyt - 2) 120 30 @{ fill = 'FFF4E5'; line = 'F5C98A'; lw = 0.75; r = 6; text = '<b>20,000 chars in under 8 ms</b>'; t_size = 9; t_color = '7A4300' })
-  [void](Add-Line $s4 ($xy[1][0] + 114) ($pyt + 13) ($xy[4][0] - 4) ($xy[4][1] - 3) @{ color = 'E0A04A'; w = 1; arrow = $true })
+  [void](Add-Box $s4 5 ($xy[1][0] - 10) ($pyt - 2) 130 30 @{ fill = 'FFF4E5'; line = 'F5C98A'; lw = 0.75; r = 6; text = '<b>20,000 chars in under 8 ms</b>'; t_size = 9; t_color = '7A4300' })
+  [void](Add-Line $s4 ($xy[1][0] + 120) ($pyt + 13) ($xy[4][0] - 4) ($xy[4][1] - 3) @{ color = 'E0A04A'; w = 1; arrow = $true })
 
   # --- Economic viability ---
   [void](Add-Box $s4 5 666 $cyTop 276 $ch @{ grad = @('E1D9F4', 'EFEAFA'); gangle = 90; r = 16 })
@@ -411,7 +412,7 @@ try {
   [void](Add-Text $s5 494 94 300 24 'BENEFITS' @{ size = 17; bold = $true; color = '000000'; anchor = 3 })
   $bens = @(
     @{ i = 'hand-heart'; c = 'E46A6A'; t = 'Social'; d = 'Privacy by default for every AI user, so more people can use AI with confidence' },
-    @{ i = 'indian-rupee'; c = $GREEN; t = 'Economic'; d = "Cuts breach and DPDP penalty exposure (up to $($RUPEE)250 Cr) with zero server spend" },
+    @{ i = 'indian-rupee'; c = $GREEN; t = 'Economic'; d = "Avoids breach costs ($($RUPEE)25.5 Cr average in India, IBM 2026) and DPDP penalties up to $($RUPEE)250 Cr, with zero server spend" },
     @{ i = 'scale'; c = $PURPLE; t = 'Compliance'; d = 'Data minimisation by design (DPDP Act 2023, GDPR); the audit log stores counts, never text' },
     @{ i = 'leaf'; c = '1BA37A'; t = 'Environmental'; d = 'No proxy servers or extra data-centre hops; runs on devices people already have' }
   )
@@ -443,53 +444,76 @@ try {
   }
 
   # =====================================================================
-  # SLIDE 6 - RESEARCH AND REFERENCES
+  # SLIDE 6 - RESEARCH AND REFERENCES (Industry + Market only, kept short)
   # =====================================================================
   $s6 = $pres.Slides.Item(6)
-  Set-Header $s6 'RESEARCH AND REFERENCES' '' $FOOTER
+  Set-Header $s6 'RESEARCH AND REFERENCES' 'Why the problem is real, and why the market needs it now' $FOOTER
 
   $LIGHTLINK = '1D3FA0'; $DARKLINK = 'A9D4FF'
-  function Quad($sl, $x, $y, $dark, $icon, $head, $items) {
-    if ($dark) { $g = @('0B0B2B', '3B39C9'); $tc = 'FFFFFF'; $lc = $DARKLINK; $ic = 'FFFFFF' }
-    else { $g = @('BDF2F6', 'A9C0F2'); $tc = '000000'; $lc = $LIGHTLINK; $ic = $NAVY }
-    [void](Add-Box $sl 1 $x $y 459 196 @{ grad = $g; gangle = 0 })
-    [void](Add-Icon $sl $icon $ic ($x + 14) ($y + 9) 22)
-    [void](Add-Text $sl ($x + 42) ($y + 6) 405 28 $head @{ size = 17; bold = $true; color = $tc; anchor = 3 })
-    $paras = @()
-    foreach ($it in $items) {
-      $p = $it[0]
-      if ($it.Count -gt 1 -and $it[1] -ne '') {
-        $p += [string][char]11 + "<a=$($it[1])><c=$lc><s=8.5>$($it[2])</s></c></a>"
-      }
-      $paras += $p
-    }
-    [void](Add-Text $sl ($x + 16) ($y + 38) 430 154 $paras @{ size = 10; color = $tc; bullet = $BUL; bcolor = $tc; indent = 10; after = 5; within = 1.0 })
+  $pTop = 92; $pH = 398
+
+  # ---------------- INDUSTRY RESEARCH (left, light) ----------------
+  [void](Add-Box $s6 5 18 $pTop 456 $pH @{ grad = @('BDF2F6', 'A9C0F2'); gangle = 0; r = 14 })
+  [void](Add-Icon $s6 'book-open' $NAVY 34 ($pTop + 12) 24)
+  [void](Add-Text $s6 66 ($pTop + 8) 390 32 'INDUSTRY RESEARCH' @{ size = 18; bold = $true; color = '000000'; anchor = 3 })
+
+  $ind = @(
+    @{ n = '77%'; c = $RED; t = 'of GenAI users paste work data into AI prompts'; s = 'LayerX, Enterprise AI & SaaS Data Security Report 2025'; u = 'https://go.layerxsecurity.com/the-layerx-enterprise-ai-saas-data-security-report-2025' },
+    @{ n = '39.7%'; c = $ORANGE; t = 'of all data shared with AI tools is sensitive'; s = 'Cyberhaven Labs, AI Adoption & Risk Report 2026'; u = 'https://www.cyberhaven.com/press-releases/cyberhaven-2026-ai-adoption-risk-report' },
+    @{ n = "$($RUPEE)25.5 Cr"; c = $PURPLE; t = 'average cost of one data breach in India, a record high'; s = 'IBM, Cost of a Data Breach Report 2026'; u = 'https://in.newsroom.ibm.com/India-Records-its-Highest-Average-Cost-of-a-Data-Breach-2026' },
+    @{ n = '2023'; c = $NAVY; t = 'Samsung bans ChatGPT after engineers leak source code into it'; s = 'TechCrunch, 2 May 2023'; u = 'https://techcrunch.com/2023/05/02/samsung-bans-use-of-generative-ai-tools-like-chatgpt-after-april-internal-data-leak/' }
+  )
+  $ry = $pTop + 50
+  foreach ($it in $ind) {
+    [void](Add-Box $s6 5 32 $ry 428 78 @{ fill = 'FFFFFF'; r = 10; shadow = $true })
+    [void](Add-Text $s6 38 $ry 124 78 $it.n @{ size = 25; bold = $true; color = $it.c; align = 2; anchor = 3 })
+    [void](Add-Line $s6 166 ($ry + 14) 166 ($ry + 64) @{ color = 'D5DCE8'; w = 1 })
+    $txt = @(
+      "<b>$($it.t)</b>",
+      "<a=$($it.u)><c=$LIGHTLINK><s=9>$($it.s)</s></c></a>"
+    )
+    [void](Add-Text $s6 178 ($ry + 6) 272 66 $txt @{ size = 12.5; color = $INK; anchor = 3; after = 4; within = 1.0 })
+    $ry += 84
   }
 
-  Quad $s6 18 96 $false 'book-open' 'INDUSTRY RESEARCH' @(
-    @("<b>LayerX (2025)</b>, Enterprise AI & SaaS Data Security Report: 77% of GenAI users paste data into prompts; 82% from personal accounts", 'https://go.layerxsecurity.com/the-layerx-enterprise-ai-saas-data-security-report-2025', 'go.layerxsecurity.com/the-layerx-enterprise-ai-saas-data-security-report-2025'),
-    @("<b>Cyberhaven Labs (2026)</b>, AI Adoption & Risk Report: 39.7% of data shared with AI tools is sensitive", 'https://www.cyberhaven.com/press-releases/cyberhaven-2026-ai-adoption-risk-report', 'cyberhaven.com/press-releases/cyberhaven-2026-ai-adoption-risk-report'),
-    @("<b>TechCrunch (2023)</b>: Samsung bans generative AI after staff leaked internal code to ChatGPT", 'https://techcrunch.com/2023/05/02/samsung-bans-use-of-generative-ai-tools-like-chatgpt-after-april-internal-data-leak/', "techcrunch.com/2023/05/02/samsung-bans-use-of-generative-ai-tools$ELL")
+  # ---------------- MARKET RESEARCH (right, dark) ----------------
+  [void](Add-Box $s6 5 486 $pTop 456 $pH @{ grad = @('0B0B2B', '3B39C9'); gangle = 0; r = 14 })
+  [void](Add-Icon $s6 'chart-bar' 'FFFFFF' 502 ($pTop + 12) 24)
+  [void](Add-Text $s6 534 ($pTop + 8) 390 32 'MARKET RESEARCH' @{ size = 18; bold = $true; color = 'FFFFFF'; anchor = 3 })
+
+  # Market size chart card
+  $cTop = $pTop + 50
+  [void](Add-Box $s6 5 500 $cTop 428 142 @{ fill = 'FFFFFF'; r = 10 })
+  [void](Add-Text $s6 514 ($cTop + 8) 300 18 'Data loss prevention (DLP) market' @{ size = 12.5; bold = $true; color = $NAVY; anchor = 3 })
+  [void](Add-Text $s6 514 ($cTop + 26) 300 13 '<a=https://www.grandviewresearch.com/industry-analysis/data-loss-prevention-market><c=1D3FA0>Grand View Research, 2026</c></a>' @{ size = 9; color = $MUTED; anchor = 3 })
+  [void](Add-Box $s6 5 830 ($cTop + 10) 88 24 @{ fill = $GREEN; r = 12; text = '19% CAGR'; t_size = 11; t_bold = $true; t_color = 'FFFFFF' })
+  $barX = 562; $barMax = 250
+  $bars = @(@('2025', 3.4, 'USD 3.4 B', '8FA9D6'), @('2033', 13.8, 'USD 13.8 B', $PURPLE))
+  $by = $cTop + 52
+  foreach ($b in $bars) {
+    $bw = $barMax * $b[1] / 13.8
+    [void](Add-Text $s6 514 $by 44 30 $b[0] @{ size = 12; bold = $true; color = $INK; anchor = 3 })
+    [void](Add-Box $s6 5 $barX ($by + 3) $bw 24 @{ fill = $b[3]; r = 5 })
+    [void](Add-Text $s6 ($barX + $bw + 8) $by 100 30 $b[2] @{ size = 12.5; bold = $true; color = $NAVY; anchor = 3 })
+    $by += 38
+  }
+  [void](Add-Text $s6 514 ($cTop + 124) 404 14 "About 4$([char]0x00D7) growth in 8 years, driven by data-protection laws and AI adoption" @{ size = 9; italic = $true; color = $MUTED; anchor = 3 })
+
+  # Three short points
+  $mk = @(
+    @{ i = 'eye-off'; h = 'Blind spot'; t = '82% of AI pastes come from personal accounts that company network tools cannot see'; s = 'LayerX 2025'; u = 'https://go.layerxsecurity.com/the-layerx-enterprise-ai-saas-data-security-report-2025' },
+    @{ i = 'puzzle'; h = 'Gap we fill'; t = 'Existing tools block AI or route prompts through a cloud proxy. P2Shield cleans them on the device, for free.'; s = ''; u = '' },
+    @{ i = 'gavel'; h = 'Why now'; t = "DPDP Rules 2025: full compliance due May 2027, penalties up to $($RUPEE)250 Cr"; s = 'MeitY, Data Protection Framework'; u = 'https://www.meity.gov.in/data-protection-framework' }
   )
-  Quad $s6 483 96 $true 'scale' 'STANDARDS & REGULATIONS' @(
-    @("<b>OWASP Top 10 for LLM Applications 2025</b> $NDASH LLM02: Sensitive Information Disclosure", 'https://genai.owasp.org/llm-top-10/', 'genai.owasp.org/llm-top-10'),
-    @("<b>Digital Personal Data Protection Act 2023</b> and DPDP Rules 2025 (MeitY)", 'https://www.meity.gov.in/data-protection-framework', 'meity.gov.in/data-protection-framework'),
-    @("<b>NIST SP 800-122</b> $NDASH Guide to Protecting the Confidentiality of PII", 'https://csrc.nist.gov/pubs/sp/800/122/final', 'csrc.nist.gov/pubs/sp/800/122/final'),
-    @("<b>GDPR Art. 25</b> $NDASH data protection by design and by default", 'https://gdpr-info.eu/art-25-gdpr/', 'gdpr-info.eu/art-25-gdpr')
-  )
-  Quad $s6 18 296 $true 'chart-bar' 'MARKET RESEARCH' @(
-    @("<b>Data loss prevention market</b>: USD 3.4 B (2025) $ARROW USD 13.8 B by 2033, 19.0% CAGR (Grand View Research)", 'https://www.grandviewresearch.com/industry-analysis/data-loss-prevention-market', 'grandviewresearch.com/industry-analysis/data-loss-prevention-market'),
-    @("<b>82% of AI pastes</b> come from unmanaged accounts that network DLP cannot see $ARROW the control has to live on the device (LayerX 2025)"),
-    @("<b>Gap</b>: current tools block AI or proxy prompts through the cloud; on-device, policy-driven sanitizing is what P2Shield adds"),
-    @("<b>Demand drivers</b>: DPDP compliance deadline (May 2027), enterprise AI rollout, regulated sectors such as health and banking")
-  )
-  Quad $s6 483 296 $false 'file-text' 'TECHNICAL DOCUMENTATION' @(
-    @("<b>Chrome Prompt API</b> (Gemini Nano, on-device) for extensions", 'https://developer.chrome.com/docs/extensions/ai/prompt-api', 'developer.chrome.com/docs/extensions/ai/prompt-api'),
-    @("<b>chrome.storage.managed</b> $NDASH organization policy for extensions", 'https://developer.chrome.com/docs/extensions/reference/api/storage', 'developer.chrome.com/docs/extensions/reference/api/storage'),
-    @("<b>Microsoft Presidio</b> $NDASH open-source PII detection and anonymization (reference design)", 'https://microsoft.github.io/presidio/', 'microsoft.github.io/presidio'),
-    @("<b>Checksums</b>: Luhn (ISO/IEC 7812), Verhoeff (Aadhaar), IBAN mod-97 (ISO 13616)"),
-    @("<b>P2Shield prototype</b> $NDASH source code, tests and demo page", 'https://github.com/Rohittiger99/Guardrail_hackathon', 'github.com/Rohittiger99/Guardrail_hackathon')
-  )
+  $my = $cTop + 154
+  foreach ($m in $mk) {
+    [void](Add-Box $s6 5 500 ($my + 4) 40 40 @{ fill = '5B5BD6'; r = 8 })
+    [void](Add-Icon $s6 $m.i 'FFFFFF' 509 ($my + 13) 22)
+    $paras = @("<b><c=$DARKLINK>$($m.h)</c></b>", $m.t)
+    if ($m.u -ne '') { $paras += "<a=$($m.u)><c=$DARKLINK><s=9>$($m.s)</s></c></a>" }
+    [void](Add-Text $s6 552 $my 376 52 $paras @{ size = 11; color = 'FFFFFF'; anchor = 3; after = 1; within = 1.0 })
+    $my += 60
+  }
 
   # ---------- save ----------
   $pres.SaveAs($OutPptx)

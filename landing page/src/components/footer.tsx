@@ -1,45 +1,30 @@
 import React from "react";
-import { Shield, Lock } from "lucide-react";
+import { LOGO_SRC, NPM_URL, REPO_URL } from "@/config";
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="w-full border-t border-slate-200 bg-white py-12">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-8 border-b border-slate-100">
+    <footer className="w-full border-t border-slate-200 bg-white">
+      <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 md:py-14">
+        <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white font-bold shadow-sm shadow-sky-600/20">
-              <Shield className="h-5 w-5" />
-            </div>
+            <img src={LOGO_SRC} alt="" width={32} height={36} className="h-9 w-auto" />
             <div>
-              <span className="font-bold text-slate-900 tracking-tight text-base">
-                TechKnights Privacy Firewall
-              </span>
-              <p className="text-xs text-slate-500">
-                Pre-LLM Privacy Firewall for Sensitive Data Protection
-              </p>
+              <p className="text-base font-bold tracking-tight text-slate-900">P2Shield</p>
+              <p className="text-sm text-slate-500">On-device privacy for AI prompts.</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-xs text-slate-600">
-            <div className="flex items-center gap-1.5 text-emerald-700 font-medium">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Zero-Telemetry & 100% Local</span>
-            </div>
-            <a href="#how-it-works" className="hover:text-slate-900 transition-colors">
-              How It Works
-            </a>
-            <a href="#install" className="hover:text-slate-900 transition-colors">
-              Download
-            </a>
-          </div>
+          <nav aria-label="Footer" className="flex items-center gap-6 text-sm text-slate-600">
+            <a href="#how-it-works" className="transition-colors hover:text-slate-900">How it works</a>
+            <a href="#install" className="transition-colors hover:text-slate-900">Install</a>
+            <a href={NPM_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-slate-900">npm</a>
+            <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-slate-900">GitHub</a>
+          </nav>
         </div>
 
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} TechKnights. Pre-LLM Sensitive Data Protection.</p>
-          <p className="flex items-center gap-1">
-            Built with <span>React, Tailwind CSS & shadcn/ui</span>
-          </p>
-        </div>
+        <p className="mt-10 border-t border-slate-100 pt-6 text-center text-xs leading-5 text-slate-500 md:text-left">
+          © {new Date().getFullYear()} TechKnights. Pre-LLM Privacy Firewall for Sensitive Data Protection.
+        </p>
       </div>
     </footer>
   );

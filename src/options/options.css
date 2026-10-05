@@ -1,5 +1,5 @@
 /* ============================================================================
-   TechKnights Privacy Firewall: options app
+   P2Shield: options app
    Tokens -> base -> shell -> components -> views -> responsive
    ========================================================================== */
 
@@ -185,12 +185,10 @@ h1:focus { outline: none; }
   border-radius: var(--radius-sm);
 }
 .logo {
-  display: grid; place-items: center;
-  width: 38px; height: 38px; border-radius: 12px;
-  background: var(--grad); color: #fff;
-  box-shadow: 0 8px 20px -8px rgba(80, 80, 230, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  display: block; flex: none;
+  width: 38px; height: 38px; border-radius: 10px;
+  box-shadow: 0 8px 20px -10px rgba(15, 23, 42, 0.6);
 }
-.logo .i { width: 21px; height: 21px; stroke-width: 2; }
 .brand-text { display: grid; line-height: 1.2; }
 .brand-text strong { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
 .brand-text span { font-size: 12px; color: var(--ink-3); }

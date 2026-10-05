@@ -1,4 +1,4 @@
-# TechKnights Privacy Firewall
+# P2Shield
 
 A Chrome extension that cleans your prompt **on your own device** before any AI chatbot sees it.
 
@@ -52,7 +52,7 @@ Then in Chrome open `chrome://extensions`, turn on **Developer mode**, click **L
 Other ways in:
 
 - **Shortcut:** `Alt+Shift+S` protects the focused box (change it at `chrome://extensions/shortcuts`).
-- **Right-click** any text box and choose *Protect this text with TechKnights*.
+- **Right-click** any text box and choose *Protect this text with P2Shield*.
 - **Toolbar icon** opens settings and the playground.
 
 The shield shows automatically on common AI sites (ChatGPT, Claude, Gemini, Copilot, Perplexity, DeepSeek, Grok, Mistral, Poe, Meta AI, HuggingChat and more) and on any page where a box looks like a chat prompt (chat-style placeholder, multi-line field, nearby send button). Turn on *Show the shield on every text box* in settings for everything else. The shortcut and right-click menu work everywhere.
@@ -139,7 +139,7 @@ IT can push settings with Chrome's managed storage (`storage.managed`), for exam
 ## Tests
 
 ```
-npm test        # 166 unit tests: engine, formats, worldwide IDs, false positives, policies, risk, Smart mode (mocked model), speed
+npm test        # 169 unit tests: engine, formats, worldwide IDs, false positives, policies, risk, Smart mode (mocked model), speed
 npm run typecheck
 npm run e2e     # builds a test variant, loads it into Chromium with Playwright, drives the demo page
 ```
@@ -198,5 +198,8 @@ src/shared      settings storage, samples, Prompt API helpers
 demo/           demo chat page and a zero-dependency static server
 tests/          unit tests
 e2e/            Playwright end-to-end run
-build.mjs       esbuild bundler and icon generator
+build.mjs       esbuild bundler (copies the icons from src/icons)
+scripts/        make-icons.mjs: builds src/icons from p2shield-logo.png
+src/icons       toolbar icons (16/32/48/128) and a transparent logo master
+landing page/   standalone marketing site, deployed separately (own package.json)
 ```

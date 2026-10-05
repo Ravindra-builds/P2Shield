@@ -34,12 +34,12 @@ import { ShieldUi } from './ui';
 
 declare global {
   interface Window {
-    __techknightsPf?: boolean;
+    __p2shield?: boolean;
   }
 }
 
-if (!window.__techknightsPf) {
-  window.__techknightsPf = true;
+if (!window.__p2shield) {
+  window.__p2shield = true;
   void start();
 }
 
@@ -70,6 +70,12 @@ async function start(): Promise<void> {
   let currentSig: EditorSignature | null = null;
   let session: Session | null = null;
   let busy = false;
+  /**
+   * >0 while we are rewriting the box. Our writes move focus around (Quill-based editors such as
+   * Gemini's park focus on a hidden `.ql-clipboard` node during a paste), and those focus changes
+   * must not detach the editor or drop the session mid-edit.
+   */
+  let writing = 0;
   /** Our own edits fire input events; don't re-scan the text we just cleaned. */
   let quietUntil = 0;
   let scanTimer: number | undefined;
@@ -137,6 +143,16 @@ async function start(): Promise<void> {
     return v.width >= 40 && v.height >= 10;
   }
 
+  /** Rewrite the box with focus tracking paused, so the editor's own focus juggling can't detach it. */
+  async function write(editor: HTMLElement, text: string): Promise<boolean> {
+    writing++;
+    try {
+      return await setText(editor, text);
+    } finally {
+      writing--;
+    }
+  }
+
   /** The editor to act on now. If the page swapped the node, find its replacement and carry the session over. */
   function liveEditor(preferred: HTMLElement | null): HTMLElement | null {
     if (preferred && preferred.isConnected) return preferred;
@@ -157,7 +173,7 @@ async function start(): Promise<void> {
   }
 
   function reposition(): void {
-    if (!enabled() || ui.isPressed()) return;
+    if (!enabled() || ui.isPressed() || writing > 0) return;
 
     // The page re-rendered the editor (common after sending, switching chats, or layout changes).
     if (current && !current.isConnected) {
@@ -370,7 +386,8 @@ async function start(): Promise<void> {
       const { result, detections } = analyze(text, { profile, ai });
       const applied = result.findings.filter((f) => f.applied);
 
-      session = {
+      // Keep a local handle: `session` is shared with the focus handlers and must not be re-read after an await.
+      const s: Session = {
         editor,
         sig: signatureOf(editor),
         original: text,
@@ -382,11 +399,12 @@ async function start(): Promise<void> {
         active: false,
         smartNote: note,
       };
+      session = s;
 
       if (!applied.length) {
         if (pending) {
-          session.pendingSmart = true;
-          void refineWithSmart(session, pending);
+          s.pendingSmart = true;
+          void refineWithSmart(s, pending);
         }
         ui.setResult(result, profile.name);
         const held = result.findings.length;
@@ -404,18 +422,19 @@ async function start(): Promise<void> {
         return;
       }
 
-      const ok = await setText(editor, result.safeText);
+      const ok = await write(editor, result.safeText);
       quietUntil = Date.now() + 800;
-      session.lastSafe = result.safeText;
-      session.active = ok;
+      s.lastSafe = result.safeText;
+      s.active = ok;
+      if (session !== s) session = s; // a stray focus event replaced it mid-edit; this is still the live one
       ui.setBadge(0, null);
       repositionAfterEdit();
       audit(result);
       if (ok) {
-        chipFor(session);
+        chipFor(s);
         if (pending) {
-          session.pendingSmart = true;
-          void refineWithSmart(session, pending);
+          s.pendingSmart = true;
+          void refineWithSmart(s, pending);
         }
       } else {
         const copied = await copyToClipboard(result.safeText);
@@ -462,7 +481,7 @@ async function start(): Promise<void> {
     const after = result.findings.filter((f) => f.applied).length;
     const extra = after - before;
     if (result.safeText !== expected) {
-      const ok = await setText(editor, result.safeText);
+      const ok = await write(editor, result.safeText);
       quietUntil = Date.now() + 800;
       repositionAfterEdit();
       if (!ok) return; // keep the rule-based protection that is already in the box
@@ -492,7 +511,7 @@ async function start(): Promise<void> {
     let ok = false;
     if (editor) {
       s.editor = editor;
-      ok = await setText(editor, s.original);
+      ok = await write(editor, s.original);
       repositionAfterEdit();
     }
     quietUntil = Date.now() + 800;
@@ -515,35 +534,41 @@ async function start(): Promise<void> {
   }
 
   async function toggle(id: string, protectIt: boolean): Promise<void> {
-    if (!session) return;
-    const editor = liveEditor(session.editor);
+    const s = session;
+    if (!s) return;
+    const editor = liveEditor(s.editor);
     if (!editor) return;
-    session.editor = editor;
-    const edited = normalizeForCompare(getText(editor)) !== normalizeForCompare(session.lastSafe);
+    s.editor = editor;
+    const edited = normalizeForCompare(getText(editor)) !== normalizeForCompare(s.lastSafe);
     if (edited) {
       ui.showChip({ message: 'The text changed since it was protected. Click the shield again to re-scan.' }, 5000);
       return;
     }
-    session.pendingSmart = false;
-    session.overrides[id] = protectIt ? 'PROTECT' : 'KEEP';
-    const result = evaluate(session.original, session.detections, profile, session.mode, session.overrides);
-    const ok = await setText(editor, result.safeText);
+    s.pendingSmart = false;
+    s.overrides[id] = protectIt ? 'PROTECT' : 'KEEP';
+    const result = evaluate(s.original, s.detections, profile, s.mode, s.overrides);
+    const ok = await write(editor, result.safeText);
     quietUntil = Date.now() + 800;
-    session.result = result;
-    session.lastSafe = result.safeText;
-    session.active = ok;
+    s.result = result;
+    s.lastSafe = result.safeText;
+    s.active = ok;
+    if (session !== s) session = s;
     repositionAfterEdit();
     ui.setResult(result, profile.name);
     if (!ok) ui.showChip({ message: "Couldn't update the box. Use Undo and try again." }, 4000);
-    else chipFor(session);
+    else chipFor(s);
   }
 
   // ---- events ----------------------------------------------------------------
   function onFocusIn(e: FocusEvent): void {
-    if (!enabled()) return;
+    if (!enabled() || writing > 0) return;
     const target = e.composedPath()[0] ?? e.target;
     const el = resolveEditable(target);
     if (!el) return;
+    // Editors park focus on hidden helper nodes (Quill's off-screen `.ql-clipboard` during a paste).
+    // That isn't the user leaving the box, so neither attach nor detach.
+    const v = visibleBox(el);
+    if (v.width < 20 || v.height < 8) return;
     lastFocusAt = Date.now();
     if (shouldShowShield(el, { hostname, showOnAll: settings.showOnAll })) attach(el);
     else if (current && current !== el) detach();
@@ -551,7 +576,7 @@ async function start(): Promise<void> {
 
   /** Clicking into a box that is already focused doesn't fire focusin, so listen for the pointer too. */
   function onPointerDown(e: PointerEvent): void {
-    if (!enabled()) return;
+    if (!enabled() || writing > 0) return;
     const el = resolveEditable(e.composedPath()[0] ?? e.target);
     if (!el) return;
     lastFocusAt = Date.now();
