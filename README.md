@@ -5,7 +5,7 @@
 <h1 align="center">P2Shield</h1>
 
 <p align="center">
-  <strong>A pre-LLM privacy firewall that cleans every prompt on your own device, before any chatbot sees it.</strong>
+  <strong>A pre-LLM privacy firewall that cleans every prompt on your own device, before any LLM/AI tool sees it.</strong>
 </p>
 
 <p align="center">
@@ -86,7 +86,7 @@ Identity is removed; the diagnosis stays because the AI needs it to answer.
 Requires Node.js 20+ and Chrome (or another Chromium browser) 116+.
 
 ```bash
-git clone https://github.com/Ravindra-builds/P2Shield.git
+git clone https://github.com/Rohittiger99/P2Shield/
 cd P2Shield
 npm install
 npm run build
