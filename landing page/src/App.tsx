@@ -1,8 +1,6 @@
 import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/ui/animated-hero";
 import { HowItWorks } from "@/components/ui/how-it-works";
-import { FirewallSimulator } from "@/components/firewall-simulator";
-import { FeaturesSection } from "@/components/features";
 import { ProfilesSection } from "@/components/profiles";
 import { InstallationSection } from "@/components/installation";
 import { Footer } from "@/components/footer";
@@ -14,8 +12,6 @@ export function App() {
       <main className="flex-1">
         <Hero />
         <HowItWorks />
-        <FirewallSimulator />
-        <FeaturesSection />
         <ProfilesSection />
         <InstallationSection />
       </main>

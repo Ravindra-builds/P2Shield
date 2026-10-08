@@ -58,41 +58,45 @@ export const ProfilesSection: React.FC = () => {
   ];
 
   return (
-    <section id="profiles" className="w-full py-16 sm:py-24 bg-card/20 border-t border-border/40">
-      <div className="container mx-auto px-4">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+    <section id="profiles" className="w-full py-16 sm:py-20 bg-slate-50/60 border-t border-slate-200/80">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-xs font-semibold mb-3">
+            <Building2 className="w-3.5 h-3.5" />
+            Compliance Profiles
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             Built-in Security Profiles
           </h2>
-          <p className="mt-4 text-base sm:text-lg text-muted-foreground">
-            Switch policies instantly with a single click. Passwords, API tokens, and private keys are <strong className="text-foreground">always stripped</strong> in every single profile.
+          <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed">
+            Switch policies instantly with a single click. Passwords, API tokens, and private keys are <strong className="text-slate-900">always stripped</strong> in every single profile.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {profiles.map((p, idx) => (
             <div
               key={idx}
-              className="rounded-2xl border border-border bg-card p-6 flex flex-col justify-between hover:border-primary/50 transition-all hover:shadow-xl"
+              className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 flex flex-col justify-between hover:border-sky-300 transition-all hover:shadow-xs"
             >
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2.5 rounded-xl bg-muted border border-border/40">
+                <div className="flex items-center justify-between mb-3.5">
+                  <div className="p-2 rounded-lg bg-sky-50 text-sky-700 border border-sky-100">
                     {p.icon}
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-secondary text-foreground">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                     {p.badge}
                   </span>
                 </div>
-                <h3 className="text-xl font-bold text-foreground mb-2">{p.name}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed mb-6">
+                <h3 className="text-base font-bold text-slate-900 mb-1.5">{p.name}</h3>
+                <p className="text-xs text-slate-600 leading-relaxed mb-4">
                   {p.description}
                 </p>
 
-                <div className="space-y-2.5 border-t border-border/40 pt-4">
+                <div className="space-y-2 border-t border-slate-100 pt-3.5">
                   {p.rules.map((rule, rIdx) => (
-                    <div key={rIdx} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <Check className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
+                    <div key={rIdx} className="flex items-start gap-2 text-xs text-slate-600">
+                      <Check className="w-3.5 h-3.5 text-sky-600 flex-shrink-0 mt-0.5" />
                       <span>{rule}</span>
                     </div>
                   ))}

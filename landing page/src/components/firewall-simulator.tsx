@@ -1,6 +1,13 @@
 import React, { useState } from "react";
-import { Shield, ShieldAlert, ShieldCheck, RefreshCw, Copy, Check, Sparkles, AlertTriangle, Eye, ArrowRight } from "lucide-react";
+import { ShieldCheck, RefreshCw, Copy, Check, Sparkles, AlertTriangle, Eye, ArrowRight, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+interface DetectionItem {
+  type: string;
+  original: string;
+  replacement: string;
+  severity: "critical" | "high" | "medium";
+}
 
 interface Preset {
   name: string;
@@ -10,7 +17,9 @@ interface Preset {
   initialRisk: number;
   finalRisk: number;
   detectedCount: number;
-  detectedItems: { type: string; original: string; replacement: string; severity: "critical" | "high" | "medium" }[];
+  detectedItems: DetectionItem[];
+  highlightOriginal: (highlight: boolean) => React.ReactNode;
+  highlightSanitized: () => React.ReactNode;
 }
 
 const PRESETS: Preset[] = [
@@ -29,13 +38,46 @@ const dbUri = "postgresql://postgres:[REDACTED_PASSWORD]@[INTERNAL_HOST]:5432/pr
 And notify my webhook [REDACTED_WEBHOOK_URL]`,
     initialRisk: 98,
     finalRisk: 8,
-    detectedCount: 4,
+    detectedCount: 5,
     detectedItems: [
       { type: "AWS Access Key", original: "AKIAIOSFODNN7EXAMPLE", replacement: "[REDACTED_AWS_KEY]", severity: "critical" },
-      { type: "AWS Secret Key", original: "wJalrXUtnFEMI/...", replacement: "[REDACTED_AWS_SECRET]", severity: "critical" },
+      { type: "AWS Secret Key", original: "wJalrXUtnFEMI...", replacement: "[REDACTED_AWS_SECRET]", severity: "critical" },
       { type: "DB Password", original: "SuperSecretP@ssw0rd123!", replacement: "[REDACTED_PASSWORD]", severity: "critical" },
       { type: "Internal Host", original: "db.internal.acme.corp", replacement: "[INTERNAL_HOST]", severity: "high" },
+      { type: "Webhook Endpoint", original: "https://discord.com/api/...", replacement: "[REDACTED_WEBHOOK_URL]", severity: "medium" },
     ],
+    highlightOriginal: (highlight) => (
+      <>
+        <span>Hey chatbot, debug this AWS deployment error:</span>{"\n"}
+        <span>export AWS_ACCESS_KEY_ID=</span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">AKIAIOSFODNN7EXAMPLE</span> : "AKIAIOSFODNN7EXAMPLE"}{"\n"}
+        <span>export AWS_SECRET_ACCESS_KEY=</span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY</span> : "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"}{"\n"}
+        <span>const dbUri = "postgresql://postgres:</span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">SuperSecretP@ssw0rd123!</span> : "SuperSecretP@ssw0rd123!"}
+        <span>@</span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">db.internal.acme.corp</span> : "db.internal.acme.corp"}
+        <span>:5432/production_customers";</span>{"\n"}
+        <span>And notify my webhook </span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">https://discord.com/api/webhooks/123456789/abcdefgh-token</span> : "https://discord.com/api/webhooks/123456789/abcdefgh-token"}
+      </>
+    ),
+    highlightSanitized: () => (
+      <>
+        <span>Hey chatbot, debug this AWS deployment error:</span>{"\n"}
+        <span>export AWS_ACCESS_KEY_ID=</span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_AWS_KEY]</span>{"\n"}
+        <span>export AWS_SECRET_ACCESS_KEY=</span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_AWS_SECRET]</span>{"\n"}
+        <span>const dbUri = "postgresql://postgres:</span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_PASSWORD]</span>
+        <span>@</span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[INTERNAL_HOST]</span>
+        <span>:5432/production_customers";</span>{"\n"}
+        <span>And notify my webhook </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_WEBHOOK_URL]</span>
+      </>
+    ),
   },
   {
     name: "Customer PII & Banking",
@@ -59,6 +101,54 @@ Current balance in account: approx. $50,000.`,
       { type: "Phone Number", original: "+1 (555) 234-8901", replacement: "[PHONE_1]", severity: "medium" },
       { type: "Financial Amount", original: "$48,250.00", replacement: "approx. $50,000", severity: "medium" },
     ],
+    highlightOriginal: (highlight) => (
+      <>
+        <span>Customer request: Please summarize credit card dispute for </span>
+        {highlight ? <span className="bg-sky-500/30 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40">Johnathan Miller</span> : "Johnathan Miller"}
+        <span> (SSN: </span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">078-05-1120</span> : "078-05-1120"}
+        <span>).</span>{"\n"}
+        <span>Card number is </span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">4532 0150 1289 4921</span> : "4532 0150 1289 4921"}
+        <span>, CVV </span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">892</span> : "892"}
+        <span>, exp </span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">08/29</span> : "08/29"}
+        <span>.</span>{"\n"}
+        <span>His phone is </span>
+        {highlight ? <span className="bg-sky-500/30 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40">+1 (555) 234-8901</span> : "+1 (555) 234-8901"}
+        <span> and email is </span>
+        {highlight ? <span className="bg-sky-500/30 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40">j.miller@globalfintech.com</span> : "j.miller@globalfintech.com"}
+        <span>.</span>{"\n"}
+        <span>Current balance in account: </span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">$48,250.00</span> : "$48,250.00"}
+        <span>.</span>
+      </>
+    ),
+    highlightSanitized: () => (
+      <>
+        <span>Customer request: Please summarize credit card dispute for </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[PERSON_1]</span>
+        <span> (SSN: </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_SSN]</span>
+        <span>).</span>{"\n"}
+        <span>Card number is </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[CARD_1_VISA]</span>
+        <span>, CVV </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_CVV]</span>
+        <span>, exp </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_EXP]</span>
+        <span>.</span>{"\n"}
+        <span>His phone is </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[PHONE_1]</span>
+        <span> and email is </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[EMAIL_1]</span>
+        <span>.</span>{"\n"}
+        <span>Current balance in account: </span>
+        <span className="bg-amber-500/25 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40 font-semibold">approx. $50,000</span>
+        <span>.</span>
+      </>
+    ),
   },
   {
     name: "Healthcare & Patient Data",
@@ -80,6 +170,58 @@ Admitted to [HOSPITAL_FACILITY] on [REDACTED_DATE].`,
       { type: "Medication & Diagnosis", original: "Metformin / Diabetes", replacement: "[REDACTED_MEDICATION]", severity: "high" },
       { type: "Relative Contact", original: "Mark Jenkins / Phone", replacement: "[PERSON_2] / [PHONE_1]", severity: "medium" },
     ],
+    highlightOriginal: (highlight) => (
+      <>
+        <span>Patient discharge summary: </span>
+        {highlight ? <span className="bg-sky-500/30 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40">Sarah Jenkins</span> : "Sarah Jenkins"}
+        <span>, </span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">42 years old</span> : "42 years old"}
+        <span>, MRN: </span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">MRN-8930129</span> : "MRN-8930129"}
+        <span>.</span>{"\n"}
+        <span>Prescribed </span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">500mg Metformin</span> : "500mg Metformin"}
+        <span> twice daily for </span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">Type 2 Diabetes</span> : "Type 2 Diabetes"}
+        <span>.</span>{"\n"}
+        <span>Emergency contact: </span>
+        {highlight ? <span className="bg-sky-500/30 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40">Mark Jenkins</span> : "Mark Jenkins"}
+        <span>, </span>
+        {highlight ? <span className="bg-rose-500/30 text-rose-300 px-1 py-0.5 rounded border border-rose-500/40">+1 (415) 890-4421</span> : "+1 (415) 890-4421"}
+        <span>.</span>{"\n"}
+        <span>Admitted to </span>
+        {highlight ? <span className="bg-sky-500/30 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40">St. Jude Regional Hospital</span> : "St. Jude Regional Hospital"}
+        <span> on </span>
+        {highlight ? <span className="bg-amber-500/30 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40">12-Oct-2025</span> : "12-Oct-2025"}
+        <span>.</span>
+      </>
+    ),
+    highlightSanitized: () => (
+      <>
+        <span>Patient discharge summary: </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[PATIENT_1]</span>
+        <span>, </span>
+        <span className="bg-amber-500/25 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40 font-semibold">40-50 years old</span>
+        <span>, MRN: </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_MRN]</span>
+        <span>.</span>{"\n"}
+        <span>Prescribed </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_MEDICATION]</span>
+        <span> twice daily for </span>
+        <span className="bg-emerald-500/25 text-emerald-300 px-1 py-0.5 rounded border border-emerald-500/40 font-semibold">[REDACTED_DIAGNOSIS]</span>
+        <span>.</span>{"\n"}
+        <span>Emergency contact: </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[PERSON_2]</span>
+        <span>, </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[PHONE_1]</span>
+        <span>.</span>{"\n"}
+        <span>Admitted to </span>
+        <span className="bg-sky-500/25 text-sky-300 px-1 py-0.5 rounded border border-sky-500/40 font-semibold">[HOSPITAL_FACILITY]</span>
+        <span> on </span>
+        <span className="bg-amber-500/25 text-amber-300 px-1 py-0.5 rounded border border-amber-500/40 font-semibold">[REDACTED_DATE]</span>
+        <span>.</span>
+      </>
+    ),
   },
 ];
 
@@ -99,7 +241,7 @@ export const FirewallSimulator: React.FC = () => {
     setTimeout(() => {
       setIsSanitizing(false);
       setIsSanitized(true);
-    }, 300);
+    }, 200);
   };
 
   const handleToggleSanitize = () => {
@@ -107,7 +249,7 @@ export const FirewallSimulator: React.FC = () => {
     setTimeout(() => {
       setIsSanitizing(false);
       setIsSanitized(!isSanitized);
-    }, 250);
+    }, 200);
   };
 
   const copyToClipboard = (text: string, isSanitizedCopy: boolean) => {
@@ -121,61 +263,56 @@ export const FirewallSimulator: React.FC = () => {
     }
   };
 
-  const riskColor = (score: number) => {
-    if (score >= 80) return "text-rose-500 bg-rose-500/10 border-rose-500/30";
-    if (score >= 50) return "text-amber-500 bg-amber-500/10 border-amber-500/30";
-    if (score >= 20) return "text-sky-500 bg-sky-500/10 border-sky-500/30";
-    return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
-  };
-
   return (
-    <section id="simulator" className="w-full py-16 sm:py-24 bg-card/40 border-y border-border/40 relative">
-      <div className="container mx-auto px-4">
+    <section id="simulator" className="w-full py-16 sm:py-24 bg-slate-50/80 border-t border-slate-200/80 relative">
+      <div className="container mx-auto px-4 max-w-6xl">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold mb-4">
+        <div className="text-center max-w-2xl mx-auto mb-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-xs font-semibold mb-3">
             <Sparkles className="w-3.5 h-3.5" />
-            Interactive Playground
+            Live Firewall Simulator
           </div>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-            Test Prompt Firewall Live
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            See the Privacy Firewall in Action
           </h2>
-          <p className="mt-3 text-base sm:text-lg text-muted-foreground">
-            Experience how the on-device engine intercepts confidential tokens, credentials, and PII before they ever reach an LLM endpoint.
+          <p className="mt-2.5 text-sm sm:text-base text-slate-600 leading-relaxed">
+            Test how P2Shield intercepts sensitive credentials, personal IDs, and confidential data directly in the browser before network egress.
           </p>
         </div>
 
-        {/* Preset selector buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8">
+        {/* Preset Selector Tabs */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
           {PRESETS.map((preset, idx) => (
             <button
               key={preset.name}
               onClick={() => handlePresetSelect(idx)}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
                 selectedPresetIndex === idx
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-[1.02]"
-                  : "bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "bg-slate-900 text-white shadow-sm ring-2 ring-slate-900/10 scale-[1.01]"
+                  : "bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
               }`}
             >
-              {preset.name}
-              <span className="ml-2 text-[10px] opacity-75 hidden sm:inline">({preset.category})</span>
+              <span>{preset.name}</span>
+              <span className={`ml-2 text-[11px] font-normal ${selectedPresetIndex === idx ? "text-slate-300" : "text-slate-600"}`}>
+                ({preset.category})
+              </span>
             </button>
           ))}
         </div>
 
-        {/* Profile and action toolbar */}
-        <div className="max-w-5xl mx-auto mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-card border border-border/60 p-3 sm:p-4 rounded-xl">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Active Profile:</span>
-            <div className="flex gap-1.5">
+        {/* Control & Status Bar */}
+        <div className="mb-4 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white border border-slate-200 px-4 py-3 rounded-xl shadow-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-semibold text-slate-500">Active Profile:</span>
+            <div className="flex gap-1">
               {(["Enterprise", "Finance", "Healthcare", "Personal"] as const).map((p) => (
                 <button
                   key={p}
                   onClick={() => setActiveProfile(p)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
                     activeProfile === p
-                      ? "bg-secondary text-primary border border-primary/30 font-semibold"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-sky-100 text-sky-800 border border-sky-300"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                   }`}
                 >
                   {p}
@@ -184,111 +321,130 @@ export const FirewallSimulator: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Shield Status:</span>
-              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                Active Protection
-              </span>
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Airgapped · 0 Network Requests</span>
             </div>
 
             <Button
               size="sm"
-              variant={isSanitized ? "secondary" : "default"}
+              variant="outline"
               onClick={handleToggleSanitize}
-              className="gap-1.5 text-xs h-8"
+              className="gap-1.5 text-xs h-8 border-slate-200 text-slate-700 hover:bg-slate-100"
               disabled={isSanitizing}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSanitizing ? "animate-spin" : ""}`} />
-              {isSanitized ? "View Raw Prompt" : "Click Shield to Clean"}
+              <RefreshCw className={`w-3.5 h-3.5 ${isSanitizing ? "animate-spin text-sky-600" : ""}`} />
+              {isSanitized ? "View Raw Prompt" : "Click to Clean"}
             </Button>
           </div>
         </div>
 
-        {/* Dual Sandbox View */}
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: Input / Raw text */}
-          <div className="flex flex-col rounded-2xl border border-border bg-card p-5 relative overflow-hidden shadow-lg">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60 mb-3">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
-                <span className="text-sm font-semibold text-foreground">Original Unprotected Prompt</span>
+        {/* Dual Code Panels (Developer-Grade IDE / Terminal Layout) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Left Panel: Unprotected / Original */}
+          <div className="flex flex-col rounded-xl border border-slate-800 bg-slate-950 overflow-hidden shadow-md">
+            {/* Window Title Bar */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                </div>
+                <span className="font-mono text-slate-400 text-[12px] flex items-center gap-1.5 ml-1">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                  raw_input_prompt.txt
+                </span>
               </div>
-              <div className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${riskColor(activePreset.initialRisk)}`}>
-                Risk {activePreset.initialRisk}/100 Critical
-              </div>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-300">
+                Risk {activePreset.initialRisk}/100 · Critical
+              </span>
             </div>
 
-            <div className="relative font-mono text-xs sm:text-sm text-foreground/80 leading-relaxed bg-background/60 p-4 rounded-xl border border-border/40 min-h-[190px] whitespace-pre-wrap select-all">
-              {activePreset.originalText}
+            {/* Code Body */}
+            <div className="p-4 sm:p-5 font-mono text-xs sm:text-[13px] leading-relaxed text-slate-300 bg-slate-950 min-h-[210px] whitespace-pre-wrap select-all overflow-x-auto">
+              {activePreset.highlightOriginal(true)}
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Contains {activePreset.detectedCount} sensitive findings</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
+            {/* Panel Footer */}
+            <div className="px-4 py-2.5 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span>{activePreset.detectedCount} sensitive items flagged</span>
+              <button
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors cursor-pointer"
                 onClick={() => copyToClipboard(activePreset.originalText, false)}
               >
                 {copiedOriginal ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedOriginal ? "Copied" : "Copy Raw"}
-              </Button>
+              </button>
             </div>
           </div>
 
-          {/* Right: Sanitized / LLM Safe output */}
-          <div className="flex flex-col rounded-2xl border border-primary/40 bg-card p-5 relative overflow-hidden shadow-xl shadow-primary/5">
-            <div className="flex items-center justify-between pb-3 border-b border-border/60 mb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-semibold text-foreground">Safe Prompt (Sent to LLM)</span>
+          {/* Right Panel: Sanitized Safe Output */}
+          <div className="flex flex-col rounded-xl border border-sky-800/80 bg-slate-950 overflow-hidden shadow-md">
+            {/* Window Title Bar */}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 border-b border-slate-800 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="flex gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
+                </div>
+                <span className="font-mono text-slate-400 text-[12px] flex items-center gap-1.5 ml-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  sanitized_prompt.txt
+                </span>
               </div>
-              <div className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${riskColor(activePreset.finalRisk)}`}>
-                Risk {activePreset.finalRisk}/100 Safe
-              </div>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                Risk {activePreset.finalRisk}/100 · Safe
+              </span>
             </div>
 
-            <div className="relative font-mono text-xs sm:text-sm text-emerald-300 leading-relaxed bg-background/60 p-4 rounded-xl border border-emerald-500/20 min-h-[190px] whitespace-pre-wrap select-all">
+            {/* Code Body */}
+            <div className="p-4 sm:p-5 font-mono text-xs sm:text-[13px] leading-relaxed text-slate-200 bg-slate-950 min-h-[210px] whitespace-pre-wrap select-all overflow-x-auto">
               {isSanitizing ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground gap-2">
-                  <RefreshCw className="w-4 h-4 animate-spin text-primary" />
-                  Running local regex & checksum engine...
+                <div className="flex items-center justify-center h-36 text-slate-400 gap-2 font-sans text-xs">
+                  <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
+                  <span>Sanitizing on-device with checksum verification...</span>
                 </div>
               ) : isSanitized ? (
-                activePreset.sanitizedText
+                activePreset.highlightSanitized()
               ) : (
-                <span className="text-rose-300">{activePreset.originalText}</span>
+                <span className="text-slate-400 font-sans italic text-xs">Showing original text. Click "Clean" above to sanitize.</span>
               )}
             </div>
 
-            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-              <span className="text-emerald-400 font-medium">✓ Zero network calls made</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
+            {/* Panel Footer */}
+            <div className="px-4 py-2.5 bg-slate-900/90 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <span className="text-emerald-400 font-medium flex items-center gap-1">
+                ✓ Sanitized locally in &lt;8ms
+              </span>
+              <button
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-sky-900/60 hover:bg-sky-800 text-sky-200 text-xs font-semibold border border-sky-700/50 transition-colors cursor-pointer"
                 onClick={() => copyToClipboard(activePreset.sanitizedText, true)}
               >
                 {copiedSanitized ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedSanitized ? "Copied Safe" : "Copy Safe"}
-              </Button>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Findings Inspection Breakdown */}
-        <div className="max-w-5xl mx-auto mt-6 bg-card border border-border/60 rounded-xl p-4 sm:p-5">
-          <h4 className="text-xs uppercase tracking-wider font-bold text-muted-foreground mb-3 flex items-center gap-2">
-            <Eye className="w-3.5 h-3.5 text-primary" />
-            Detected Items & Local Transformations ({activePreset.detectedItems.length})
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* Detailed Findings Inspection Grid */}
+        <div className="mt-5 bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-3.5">
+            <h4 className="text-xs uppercase tracking-wider font-bold text-slate-600 flex items-center gap-1.5">
+              <Eye className="w-3.5 h-3.5 text-sky-600" />
+              Detected Items & In-Memory Redactions ({activePreset.detectedItems.length})
+            </h4>
+            <span className="text-[11px] text-slate-600 font-medium">Reversible via local in-memory token map</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {activePreset.detectedItems.map((item, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-background/60 border border-border/40 text-xs"
+                className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200/90 text-xs"
               >
                 <div className="flex items-center gap-2 truncate pr-2">
                   <span
@@ -297,15 +453,15 @@ export const FirewallSimulator: React.FC = () => {
                         ? "bg-rose-500"
                         : item.severity === "high"
                         ? "bg-amber-500"
-                        : "bg-sky-400"
+                        : "bg-sky-500"
                     }`}
                   />
-                  <span className="font-semibold text-foreground truncate">{item.type}</span>
+                  <span className="font-semibold text-slate-800 truncate">{item.type}</span>
                 </div>
                 <div className="flex items-center gap-1.5 font-mono text-[11px] flex-shrink-0">
-                  <span className="text-muted-foreground line-through max-w-[90px] truncate">{item.original}</span>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground" />
-                  <span className="text-primary font-medium">{item.replacement}</span>
+                  <span className="text-slate-600 line-through max-w-[80px] truncate">{item.original}</span>
+                  <ArrowRight className="w-3 h-3 text-slate-600" />
+                  <span className="text-sky-700 font-bold">{item.replacement}</span>
                 </div>
               </div>
             ))}

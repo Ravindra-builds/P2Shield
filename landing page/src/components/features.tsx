@@ -58,45 +58,46 @@ export const FeaturesSection: React.FC = () => {
   ];
 
   return (
-    <section id="features" className="w-full py-16 sm:py-24 bg-background relative">
-      <div className="container mx-auto px-4">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+    <section id="features" className="w-full py-16 sm:py-20 bg-white border-t border-slate-200/80 relative">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-xs font-semibold mb-3">
+            <Lock className="w-3.5 h-3.5" />
+            Core Capabilities
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
             Engineered for Uncompromising Privacy
           </h2>
-          <p className="mt-4 text-base sm:text-lg text-muted-foreground">
-            Built directly for the hackathon challenge:{" "}
-            <span className="text-foreground font-medium">
-              "Pre-LLM Privacy Firewall for Sensitive Data Protection"
-            </span>
+          <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed">
+            A comprehensive, client-side defense pipeline designed specifically for sensitive prompt protection.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((feat, idx) => (
             <div
               key={idx}
-              className="rounded-2xl border border-border bg-card p-6 flex flex-col justify-between transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 group"
+              className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 hover:border-sky-300 hover:shadow-xs group"
             >
               <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-2.5 rounded-xl bg-muted group-hover:bg-primary/10 transition-colors">
+                <div className="flex items-center justify-between mb-3.5">
+                  <div className="p-2 rounded-lg bg-sky-50 text-sky-700 border border-sky-100 group-hover:bg-sky-100 transition-colors">
                     {feat.icon}
                   </div>
-                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-border bg-muted/60 text-muted-foreground">
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600">
                     {feat.badge}
                   </span>
                 </div>
-                <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                <h3 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-sky-700 transition-colors">
                   {feat.title}
                 </h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   {feat.description}
                 </p>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-border/40 flex items-center text-xs text-muted-foreground gap-1.5 font-medium">
-                <CheckCircle className="w-3.5 h-3.5 text-primary" />
+              <div className="mt-4 pt-3.5 border-t border-slate-100 flex items-center text-xs text-slate-500 gap-1.5 font-medium">
+                <CheckCircle className="w-3.5 h-3.5 text-sky-600" />
                 <span>Audited for hackathon requirements</span>
               </div>
             </div>

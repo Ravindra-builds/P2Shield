@@ -5,13 +5,20 @@
   "description": "P2Shield, a pre-LLM privacy firewall: a Chrome extension that sanitizes prompts locally before they reach any chatbot.",
   "type": "module",
   "scripts": {
+    "dev": "node demo/serve.mjs",
+    "demo": "node demo/serve.mjs",
     "build": "node build.mjs",
+    "build:package": "node scripts/build-package.mjs",
+    "build:landing": "npm --prefix \"landing page\" run build",
+    "build:all": "npm run build && npm run build:package && npm run build:landing",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test && npm run build",
     "e2e": "node e2e/run.mjs",
-    "demo": "node demo/serve.mjs",
+    "icons": "node scripts/make-icons.mjs",
     "landing": "npm --prefix \"landing page\" run dev",
-    "build:landing": "npm --prefix \"landing page\" run build"
+    "landing:install": "npm --prefix \"landing page\" install"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

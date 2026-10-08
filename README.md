@@ -86,7 +86,7 @@ Identity is removed; the diagnosis stays because the AI needs it to answer.
 Requires Node.js 20+ and Chrome (or another Chromium browser) 116+.
 
 ```bash
-git clone https://github.com/Rohittiger99/P2Shield/
+git clone https://github.com/Ravindra-builds/P2Shield
 cd P2Shield
 npm install
 npm run build
@@ -236,8 +236,13 @@ build.mjs       esbuild bundler
 | Command | Does |
 |---|---|
 | `npm run build` | Bundle the extension into `dist/` |
-| `npm run demo` | Serve the demo page |
-| `npm run landing` / `npm run build:landing` | Run / build the landing page |
+| `npm run check` | Run typecheck, unit tests, and build in one step |
+| `npm test` / `npm run test:watch` | Run unit tests (single-run or watch mode) |
+| `npm run demo` / `npm run dev` | Serve the local demo chat page |
+| `npm run build:package` | Bundle the pure engine into `packages/p2shield/dist` |
+| `npm run icons` | Re-generate icons from `p2shield-logo.png` |
+| `npm run landing` / `npm run build:landing` | Run / build the standalone landing page |
+| `npm run build:all` | Build extension, npm package, and landing page |
 
 ## Known limits
 
