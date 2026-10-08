@@ -125,7 +125,7 @@ export function generalizeValue(d: Detection): string | null {
 // ---- Tokenisation -----------------------------------------------------------
 
 class Tokenizer {
-  private counters: Record<string, number> = {};
+  private counters = new Map<string, number>();
   private byKey = new Map<string, string>();
   private people: Array<{ words: Set<string>; token: string }> = [];
   readonly map: Record<string, string> = {};
@@ -161,8 +161,9 @@ class Tokenizer {
   }
 
   private next(label: string): string {
-    this.counters[label] = (this.counters[label] ?? 0) + 1;
-    return `[${label}_${this.counters[label]}]`;
+    const count = (this.counters.get(label) ?? 0) + 1;
+    this.counters.set(label, count);
+    return `[${label}_${count}]`;
   }
 }
 

@@ -14,10 +14,19 @@ export const Navbar: React.FC = () => {
         </a>
 
         <nav aria-label="Primary" className="hidden items-center gap-1 text-sm font-medium text-slate-600 md:flex">
-          <a href="#how-it-works" className="rounded-full px-4 py-2 transition-colors hover:bg-slate-100 hover:text-slate-900">
+          <a href="#how-it-works" className="rounded-full px-3 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-900">
             How it works
           </a>
-          <a href="#install" className="rounded-full px-4 py-2 transition-colors hover:bg-slate-100 hover:text-slate-900">
+          <a href="#simulator" className="rounded-full px-3 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-900">
+            Simulator
+          </a>
+          <a href="#features" className="rounded-full px-3 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-900">
+            Features
+          </a>
+          <a href="#profiles" className="rounded-full px-3 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-900">
+            Profiles
+          </a>
+          <a href="#install" className="rounded-full px-3 py-1.5 transition-colors hover:bg-slate-100 hover:text-slate-900">
             Install
           </a>
         </nav>

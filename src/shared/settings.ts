@@ -73,9 +73,11 @@ export async function loadSettings(): Promise<Settings> {
   // Profiles saved by an older version lack rules for data types added since. Normalising fills them
   // in from the built-in defaults (and re-forces secrets to removal) instead of leaving holes.
   s.profiles = {};
+  const dangerousKeys = new Set(['__proto__', 'constructor', 'prototype']);
   for (const [id, raw] of Object.entries(stored.profiles ?? {})) {
+    if (dangerousKeys.has(id)) continue;
     const p = normalizeProfile(raw, id);
-    if (p) s.profiles[id] = p;
+    if (p && !dangerousKeys.has(p.id)) s.profiles[p.id] = p;
   }
   const managed = await readManaged();
   if (Object.keys(managed).length) {

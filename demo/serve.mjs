@@ -1,7 +1,7 @@
 // Zero-dependency static server for the demo page.  Usage: node demo/serve.mjs [port]
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { dirname, extname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -18,7 +18,8 @@ export function startServer(port = 4173) {
       }
       const rel = normalize(decodeURIComponent(url.pathname)).replace(/^([/\\])+/, '') || 'index.html';
       if (rel.includes('..')) throw new Error('bad path');
-      const file = join(root, rel.endsWith('/') ? rel + 'index.html' : rel);
+      const file = resolve(root, rel.endsWith('/') ? rel + 'index.html' : rel);
+      if (!file.startsWith(resolve(root))) throw new Error('bad path');
       const data = await readFile(file);
       res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' });
       res.end(data);

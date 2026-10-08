@@ -152,6 +152,12 @@ function structuredCloneSafe<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
 }
 
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isSafeId(id: unknown): id is string {
+  return typeof id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(id) && !DANGEROUS_KEYS.has(id);
+}
+
 /** Validate and normalise an imported / stored profile. Credentials are forced to REMOVE_SECRET. */
 export function normalizeProfile(raw: unknown, fallbackId = 'custom'): Profile | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -161,6 +167,7 @@ export function normalizeProfile(raw: unknown, fallbackId = 'custom'): Profile |
   const actions: Action[] = ['KEEP', 'MASK', 'TOKENIZE', 'REDACT', 'GENERALIZE', 'REMOVE_SECRET'];
   if (r.rules && typeof r.rules === 'object') {
     for (const t of ENTITY_TYPES) {
+      if (DANGEROUS_KEYS.has(t as string)) continue;
       const v = (r.rules as Record<string, PolicyRule | undefined>)[t];
       if (v && actions.includes(v.action)) {
         rules[t] = { action: v.action, keepIfNeeded: !!v.keepIfNeeded };
@@ -170,10 +177,12 @@ export function normalizeProfile(raw: unknown, fallbackId = 'custom'): Profile |
   for (const t of CREDENTIAL_TYPES) rules[t] = { action: 'REMOVE_SECRET' };
   const threshold =
     typeof r.threshold === 'number' && r.threshold >= 0 && r.threshold <= 1 ? r.threshold : base.threshold;
+  const safeFallback = isSafeId(fallbackId) ? fallbackId : 'custom';
+  const id = isSafeId(r.id) ? r.id : safeFallback;
   return {
-    id: typeof r.id === 'string' && r.id ? r.id : fallbackId,
-    name: typeof r.name === 'string' && r.name ? r.name : base.name,
-    description: typeof r.description === 'string' ? r.description : base.description,
+    id,
+    name: typeof r.name === 'string' && r.name ? r.name.slice(0, 80) : base.name,
+    description: typeof r.description === 'string' ? r.description.slice(0, 300) : base.description,
     threshold,
     rules,
   };
