@@ -11,6 +11,21 @@
     <meta property="og:type" content="website" />
     <meta property="og:title" content="P2Shield: on-device privacy for AI prompts" />
     <meta property="og:description" content="Clean every prompt before AI sees it. No server, no account, no network requests." />
+    <script>
+      (function() {
+        try {
+          var t = localStorage.getItem('theme');
+          var d = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (t === 'dark' || (!t && d)) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.classList.remove('light');
+          } else {
+            document.documentElement.classList.add('light');
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-background text-foreground antialiased min-h-screen">
     <div id="root"></div>

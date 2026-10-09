@@ -1,6 +1,6 @@
 {
   "name": "p2shield",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Pre-LLM Privacy Firewall: Zero-latency, on-device sanitization, risk scoring, and de-tokenization for AI prompts.",
   "type": "module",
   "main": "./dist/index.cjs",

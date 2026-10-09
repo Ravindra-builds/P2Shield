@@ -38,18 +38,18 @@ function CodeBlock({ command }: { command: string }) {
 
 export const InstallationSection: React.FC = () => {
   return (
-    <section id="install" aria-labelledby="install-title" className="scroll-mt-20 border-t border-slate-200/80 bg-white py-16 sm:py-24">
+    <section id="install" aria-labelledby="install-title" className="scroll-mt-20 border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-950 py-16 sm:py-24">
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-8">
         {/* Section Header */}
         <div className="mx-auto max-w-2xl text-center mb-14">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-sky-200 bg-sky-50 text-sky-700 text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-sky-200 dark:border-sky-800/60 bg-sky-50 dark:bg-sky-950/70 text-sky-700 dark:text-sky-400 text-xs font-semibold mb-3">
             <Download className="w-3.5 h-3.5" />
             Developer Setup
           </div>
-          <h2 id="install-title" className="text-balance text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+          <h2 id="install-title" className="text-balance text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             Get Started with P2Shield
           </h2>
-          <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed">
+          <p className="mt-2 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
             Run the privacy firewall as an unpacked Chrome extension, or integrate the core engine as a standalone npm package.
           </p>
         </div>
@@ -57,24 +57,24 @@ export const InstallationSection: React.FC = () => {
         {/* Dual Setup Cards */}
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 lg:grid-cols-2 items-stretch">
           {/* Card 1: Browser Extension (Local Build & Unpacked) */}
-          <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs hover:border-sky-300 hover:shadow-sm transition-all">
+          <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-sm transition-all">
             <div>
               {/* Card Header */}
-              <div className="flex items-center justify-between pb-5 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-5 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-100 bg-sky-50 text-sky-700">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-100 dark:border-sky-900/50 bg-sky-50 dark:bg-sky-950/70 text-sky-700 dark:text-sky-400">
                     <Chrome className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+                    <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                       Chrome Extension
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Chrome, Edge, Brave & Chromium
                     </p>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 dark:bg-sky-950/70 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800/60">
                   Unpacked
                 </span>
               </div>
@@ -83,8 +83,8 @@ export const InstallationSection: React.FC = () => {
               <div className="mt-6 space-y-4">
                 {/* Step 1 */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white text-[11px] font-mono">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-mono">
                       1
                     </span>
                     <span>Clone the repository</span>
@@ -94,8 +94,8 @@ export const InstallationSection: React.FC = () => {
 
                 {/* Step 2 */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white text-[11px] font-mono">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-mono">
                       2
                     </span>
                     <span>Install dependencies & build</span>
@@ -105,18 +105,18 @@ export const InstallationSection: React.FC = () => {
 
                 {/* Step 3 */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white text-[11px] font-mono">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-mono">
                       3
                     </span>
                     <span>Load unpacked in browser</span>
                   </div>
-                  <div className="rounded-lg bg-slate-50 border border-slate-200/90 p-3 text-xs leading-relaxed text-slate-600 space-y-1">
+                  <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/90 dark:border-slate-800 p-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300 space-y-1">
                     <p>
-                      Open <code className="font-mono font-semibold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-slate-200">chrome://extensions</code>
+                      Open <code className="font-mono font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">chrome://extensions</code>
                     </p>
                     <p>
-                      Toggle <strong>Developer mode</strong> (top right) ➔ click <strong>Load unpacked</strong> ➔ choose the <code className="font-mono font-semibold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-slate-200">dist/</code> folder.
+                      Toggle <strong>Developer mode</strong> (top right) ➔ click <strong>Load unpacked</strong> ➔ choose the <code className="font-mono font-semibold text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">dist/</code> folder.
                     </p>
                   </div>
                 </div>
@@ -124,12 +124,12 @@ export const InstallationSection: React.FC = () => {
             </div>
 
             {/* CTA Button */}
-            <div className="pt-6 mt-6 border-t border-slate-100">
+            <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
               <a
                 href={REPO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-xs sm:text-sm font-semibold text-white shadow-xs transition-colors hover:bg-slate-800"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 dark:bg-sky-500 px-4 text-xs sm:text-sm font-semibold text-white dark:text-slate-950 shadow-xs transition-colors hover:bg-slate-800 dark:hover:bg-sky-400"
               >
                 <span>View Source on GitHub</span>
                 <ArrowUpRight className="h-4 w-4" />
@@ -138,32 +138,32 @@ export const InstallationSection: React.FC = () => {
           </div>
 
           {/* Card 2: Standalone npm Package */}
-          <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs hover:border-sky-300 hover:shadow-sm transition-all">
+          <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 sm:p-7 shadow-xs hover:border-sky-300 dark:hover:border-sky-700 hover:shadow-sm transition-all">
             <div>
               {/* Card Header */}
-              <div className="flex items-center justify-between pb-5 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-5 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-700">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                     <Package className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+                    <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                       npm Package
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Pure engine for Node.js & TypeScript
                     </p>
                   </div>
                 </div>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/60">
                   v1.0.0
                 </span>
               </div>
 
               {/* Install Command */}
               <div className="mt-6 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                  <Terminal className="h-3.5 w-3.5 text-slate-600" />
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <Terminal className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                   <span>Installation</span>
                 </div>
                 <CodeBlock command={NPM_INSTALL} />
@@ -171,12 +171,12 @@ export const InstallationSection: React.FC = () => {
 
               {/* Code Usage Preview */}
               <div className="mt-4 space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <Layers className="h-3.5 w-3.5 text-sky-600" />
+                    <Layers className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                     <span>Quick Usage Example</span>
                   </span>
-                  <span className="text-[11px] font-mono font-normal text-slate-500">index.ts</span>
+                  <span className="text-[11px] font-mono font-normal text-slate-500 dark:text-slate-400">index.ts</span>
                 </div>
                 <div className="rounded-lg bg-slate-950 p-3 font-mono text-[11.5px] leading-5 text-slate-300 border border-slate-800 shadow-inner overflow-x-auto">
                   <span className="text-sky-400">import</span> &#123; analyze &#125; <span className="text-sky-400">from</span> <span className="text-emerald-300">"p2shield"</span>;{"\n"}
@@ -189,29 +189,29 @@ export const InstallationSection: React.FC = () => {
               </div>
 
               {/* Features List */}
-              <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
-                <div className="flex items-start gap-2 text-xs text-slate-600">
-                  <Check className="h-3.5 w-3.5 text-emerald-600 flex-none mt-0.5" />
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-none mt-0.5" />
                   <span>Zero DOM or network dependencies — works in Node, Bun & Edge</span>
                 </div>
-                <div className="flex items-start gap-2 text-xs text-slate-600">
-                  <Check className="h-3.5 w-3.5 text-emerald-600 flex-none mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-none mt-0.5" />
                   <span>28 entity types with Verhoeff, Luhn & mod-97 checksums</span>
                 </div>
-                <div className="flex items-start gap-2 text-xs text-slate-600">
-                  <Check className="h-3.5 w-3.5 text-emerald-600 flex-none mt-0.5" />
+                <div className="flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+                  <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 flex-none mt-0.5" />
                   <span>Full TypeScript typings with dual ESM and CJS exports</span>
                 </div>
               </div>
             </div>
 
             {/* CTA Button */}
-            <div className="pt-6 mt-6 border-t border-slate-100">
+            <div className="pt-6 mt-6 border-t border-slate-100 dark:border-slate-800">
               <a
                 href={NPM_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 text-xs sm:text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 hover:border-slate-300 shadow-xs"
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-4 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-600 shadow-xs"
               >
                 <span>View on npm Registry</span>
                 <ArrowUpRight className="h-4 w-4" />
