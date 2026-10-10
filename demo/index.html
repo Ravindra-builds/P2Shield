@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="engine.js"></script>
   <style>
     :root {
       --bg: #0b0f19;
@@ -416,15 +417,7 @@
   <header class="navbar">
     <div class="nav-container">
       <a href="/" class="brand" aria-label="P2Shield Home">
-        <svg className="brand-logo" width="30" height="34" viewBox="0 0 453 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M226.5 0L453 100V250C453 380 340 480 226.5 512C113 480 0 380 0 250V100L226.5 0Z" fill="url(#shield-grad)"/>
-          <defs>
-            <linearGradient id="shield-grad" x1="0" y1="0" x2="453" y2="512" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#38BDF8"/>
-              <stop offset="1" stop-color="#0284C7"/>
-            </linearGradient>
-          </defs>
-        </svg>
+        <img src="logo.png" alt="P2Shield Logo" class="brand-logo" style="height: 34px; width: auto;" />
         <span>P2Shield</span>
       </a>
       <div class="nav-actions">
@@ -691,18 +684,39 @@
         sel.value = '';
       });
     }
-    const show = (id, text) => { document.getElementById('out-' + id).textContent = text; };
+    const sanitizeText = (text) => {
+      if (window.P2ShieldEngine && typeof window.P2ShieldEngine.analyze === 'function') {
+        try {
+          return window.P2ShieldEngine.analyze(text).result.safeText;
+        } catch (e) {
+          console.error("Sanitization error:", e);
+        }
+      }
+      return text;
+    };
+    const show = (id, text) => {
+      const safe = sanitizeText(text);
+      document.getElementById('out-' + id).textContent = safe;
+    };
     window.__received = {};
 
     // ---------- 1. Plain textarea ----------
-    document.getElementById('send-ta').onclick = () => { const v = document.getElementById('ta').value; window.__received.ta = v; show('ta', v); };
+    document.getElementById('send-ta').onclick = () => {
+      const el = document.getElementById('ta');
+      const safe = sanitizeText(el.value);
+      el.value = safe;
+      window.__received.ta = safe;
+      show('ta', safe);
+    };
 
     // ---------- 2. Framework-controlled textarea ----------
+    let updateCtlState = (newVal) => {};
     (() => {
       const node = document.getElementById('ctl');
       const native = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
       let tracked = '';
       let state = '';
+      updateCtlState = (v) => { state = v; render(); };
       Object.defineProperty(node, 'value', {
         configurable: true,
         get() { return native.get.call(this); },
@@ -717,12 +731,23 @@
         if (cur === tracked) return;
         tracked = cur; state = cur; render();
       });
-      document.getElementById('send-ctl').onclick = () => { window.__received.ctl = state; show('ctl', state); };
+      document.getElementById('send-ctl').onclick = () => {
+        const safe = sanitizeText(state);
+        updateCtlState(safe);
+        window.__received.ctl = safe;
+        show('ctl', safe);
+      };
       render();
     })();
 
     // ---------- 3. Plain contenteditable ----------
-    document.getElementById('send-ce').onclick = () => { const v = document.getElementById('ce').innerText; window.__received.ce = v; show('ce', v); };
+    document.getElementById('send-ce').onclick = () => {
+      const el = document.getElementById('ce');
+      const safe = sanitizeText(el.innerText);
+      el.innerText = safe;
+      window.__received.ce = safe;
+      show('ce', safe);
+    };
 
     // ---------- 4. Model-driven editor ----------
     (() => {
@@ -765,7 +790,13 @@
         }
         render();
       });
-      document.getElementById('send-model').onclick = () => { window.__received.model = text; show('model', text); };
+      document.getElementById('send-model').onclick = () => {
+        const safe = sanitizeText(text);
+        text = safe;
+        render();
+        window.__received.model = safe;
+        show('model', safe);
+      };
       render();
     })();
 
@@ -777,12 +808,27 @@
       fresh.focus();
     };
     document.getElementById('send-gpt').onclick = () => {
-      const v = [...document.getElementById('gpt').querySelectorAll(':scope > p')].map((p) => p.innerText.replace(/\n$/, '')).join('\n');
-      window.__received.gpt = v; show('gpt', v);
+      const el = document.getElementById('gpt');
+      const raw = [...el.querySelectorAll(':scope > p')].map((p) => p.innerText.replace(/\n$/, '')).join('\n');
+      const safe = sanitizeText(raw);
+      el.replaceChildren();
+      for (const line of safe.split('\n')) {
+        const p = document.createElement('p');
+        if (line) p.textContent = line; else p.append(document.createElement('br'));
+        el.append(p);
+      }
+      window.__received.gpt = safe;
+      show('gpt', safe);
     };
 
     // ---------- 5. Single-line input ----------
-    document.getElementById('send-inp').onclick = () => { const v = document.getElementById('inp').value; window.__received.inp = v; show('inp', v); };
+    document.getElementById('send-inp').onclick = () => {
+      const el = document.getElementById('inp');
+      const safe = sanitizeText(el.value);
+      el.value = safe;
+      window.__received.inp = safe;
+      show('inp', safe);
+    };
   </script>
 </body>
 </html>
