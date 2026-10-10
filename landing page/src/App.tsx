@@ -3,6 +3,7 @@ import { Navbar } from "@/components/navbar";
 import { Hero } from "@/components/ui/animated-hero";
 import { HowItWorks } from "@/components/ui/how-it-works";
 import { ProfilesSection } from "@/components/profiles";
+import { FAQSection } from "@/components/faq";
 import { InstallationSection } from "@/components/installation";
 import { Footer } from "@/components/footer";
 
@@ -16,6 +17,7 @@ export function App() {
           <HowItWorks />
           <ProfilesSection />
           <InstallationSection />
+          <FAQSection />
         </main>
         <Footer />
       </div>

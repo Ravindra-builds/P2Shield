@@ -16,6 +16,8 @@ export const Footer: React.FC = () => {
 
           <nav aria-label="Footer" className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">
             <a href="#how-it-works" className="transition-colors hover:text-slate-900 dark:hover:text-white">How it works</a>
+            <a href="#profiles" className="transition-colors hover:text-slate-900 dark:hover:text-white">Profiles</a>
+            <a href="#faq" className="transition-colors hover:text-slate-900 dark:hover:text-white">FAQ</a>
             <a href="#install" className="transition-colors hover:text-slate-900 dark:hover:text-white">Install</a>
             <a href={NPM_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-slate-900 dark:hover:text-white">npm</a>
             <a href={REPO_URL} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-slate-900 dark:hover:text-white">GitHub</a>
