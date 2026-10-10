@@ -25,6 +25,19 @@ await build({
   logLevel: 'info',
 });
 
+// Also build standalone browser engine for demo page
+await build({
+  entryPoints: ['src/demo-engine-entry.ts'],
+  outfile: 'demo/engine.js',
+  bundle: true,
+  format: 'iife',
+  target: 'es2020',
+  minify: false,
+  sourcemap: false,
+  legalComments: 'none',
+  logLevel: 'info',
+});
+
 cpSync('src/manifest.json', `${out}/manifest.json`);
 cpSync('src/managed_schema.json', `${out}/managed_schema.json`);
 cpSync('src/options/options.html', `${out}/options.html`);
@@ -34,5 +47,6 @@ cpSync('src/offscreen/offscreen.html', `${out}/offscreen.html`);
 // Icons are generated from p2shield-logo.png by scripts/make-icons.mjs and committed in src/icons.
 for (const s of [16, 32, 48, 128]) cpSync(`src/icons/icon${s}.png`, `${out}/icons/icon${s}.png`);
 cpSync('src/icons/logo.png', `${out}/icons/logo.png`);
+cpSync('src/icons/logo.png', 'demo/logo.png');
 
-console.log(`Extension built in ./${out}`);
+console.log(`Extension built in ./${out} and demo/engine.js generated`);

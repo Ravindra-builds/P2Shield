@@ -3,157 +3,751 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Demo chatbots — P2Shield</title>
+  <title>P2Shield — Interactive Sandbox & DOM Architecture Testbed</title>
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="engine.js"></script>
   <style>
-    :root { color-scheme: light dark; }
-    body { font: 15px/1.5 system-ui, "Segoe UI", sans-serif; margin: 0; background: #f1f5f9; color: #0f172a; }
-    @media (prefers-color-scheme: dark) { body { background: #0b1020; color: #e5e7eb; } .panel { background: #131a2e !important; border-color: #263049 !important; } textarea, input, .ce { background: #0b1020 !important; color: #e5e7eb !important; border-color: #334155 !important; } pre { background: #0b1020 !important; } }
-    header { padding: 18px 24px; border-bottom: 1px solid #cbd5e1; }
-    h1 { margin: 0; font-size: 20px; } header p { margin: 4px 0 0; color: #475569; font-size: 14px; }
-    main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 80px; display: grid; gap: 22px; }
-    .panel { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 18px; }
-    .panel h2 { margin: 0 0 4px; font-size: 16px; } .note { color: #64748b; font-size: 13px; margin: 0 0 10px; }
-    .composer { display: flex; gap: 10px; align-items: flex-end; border: 1px solid #94a3b8; border-radius: 14px; padding: 10px; }
-    .composer textarea, .composer .ce, .composer input { flex: 1; border: 0; outline: 0; font: inherit; background: transparent; resize: vertical; min-height: 64px; }
-    .composer input { min-height: 0; padding: 8px 0; }
-    .ce { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; }
-    .ce:empty::before, .ce p:only-child:has(br:only-child)::before { content: attr(data-placeholder); color: #94a3b8; }
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #131927;
+      --card-border: #1e293b;
+      --card-hover: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-gradient: linear-gradient(135deg, #38bdf8, #0284c7);
+      --accent-glow: rgba(56, 189, 248, 0.15);
+      --code-bg: #030712;
+      --code-border: #1e293b;
+      --code-text: #e2e8f0;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      min-h-screen;
+    }
+
+    /* Header Navbar */
+    header.navbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 24px;
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #fff;
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.02em;
+    }
+    .brand-logo {
+      width: 30px;
+      height: 34px;
+    }
+    .brand span {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .badge-sandbox {
+      background: rgba(56, 189, 248, 0.12);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-link {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 600;
+      transition: color 0.15s;
+    }
+    .nav-link:hover { color: #fff; }
+
+    /* Main Container */
+    main.main-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 36px 20px 80px;
+      display: grid;
+      gap: 32px;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .hero-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      margin: 0 0 12px;
+      color: #fff;
+    }
+    .hero-subtitle {
+      font-size: 15px;
+      color: #94a3b8;
+      margin: 0 0 24px;
+      line-height: 1.6;
+    }
+
+    /* Sample Scenario Quick Pills */
+    .sample-pills-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+    .sample-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 8px;
+    }
+    .pill-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 7px 14px;
+      border-radius: 9999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pill-btn:hover {
+      background: #334155;
+      color: #fff;
+      border-color: #38bdf8;
+      transform: translateY(-1px);
+    }
+
+    /* Grid Layout for Panels */
+    .panels-grid {
+      display: grid;
+      grid-template-cols: 1fr;
+      gap: 28px;
+    }
+
+    /* Panel Card */
+    .card-panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .card-panel:hover {
+      border-color: #334155;
+    }
+    .panel-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .panel-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .num-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-weight: 800;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .panel-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0;
+    }
+    .tech-tag {
+      font-size: 11px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: #1e293b;
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+    }
+    .panel-desc {
+      font-size: 13.5px;
+      color: #94a3b8;
+      margin: 0 0 18px;
+      line-height: 1.5;
+    }
+
+    /* Editor & Input Styles */
+    .editor-container {
+      position: relative;
+      background: #090d16;
+      border: 1.5px solid #1e293b;
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .editor-container:focus-within {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .editor-container textarea, .editor-container .ce, .editor-container input {
+      flex: 1;
+      border: 0;
+      outline: 0;
+      font-family: inherit;
+      font-size: 14px;
+      background: transparent;
+      color: #f8fafc;
+      resize: vertical;
+      min-height: 60px;
+      line-height: 1.5;
+    }
+    .editor-container input { min-height: 0; padding: 6px 0; }
+    .ce {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      max-height: 220px;
+      overflow: auto;
+    }
+    .ce:empty::before, .ce p:only-child:has(br:only-child)::before {
+      content: attr(data-placeholder);
+      color: #64748b;
+    }
     .ce p { margin: 0; }
-    button.send { border: 0; border-radius: 50%; width: 34px; height: 34px; background: #0f172a; color: #fff; cursor: pointer; font-size: 16px; }
-    .row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-    select { padding: 5px 8px; border-radius: 8px; }
-    pre { margin: 10px 0 0; background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; padding: 10px; white-space: pre-wrap; word-break: break-word; font: 13px/1.5 ui-monospace, Consolas, monospace; min-height: 44px; }
-    .lbl { font-size: 12px; color: #64748b; margin-top: 10px; }
-    /* ChatGPT-style composer: a rounded card, icons either side, a narrow editor that grows inside a scrolling wrapper. */
-    .gpt-card { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px; border-radius: 28px; background: #e2e8f0; max-width: 720px; margin: 0 auto; }
-    @media (prefers-color-scheme: dark) { .gpt-card { background: #303030; } }
-    .gpt-scroll { flex: 1; max-height: 110px; overflow-y: auto; }
-    .gpt-card .ce { overflow: visible; max-height: none; min-height: 28px; padding: 4px 0; }
-    .gpt-card .icon { border: 0; background: transparent; font-size: 18px; width: 34px; height: 34px; cursor: pointer; color: inherit; }
+
+    /* Action Buttons inside Editor */
+    button.btn-send {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 0;
+      background: #38bdf8;
+      color: #090d16;
+      cursor: pointer;
+      font-weight: 800;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: transform 0.12s, background 0.15s;
+    }
+    button.btn-send:hover {
+      transform: scale(1.08);
+      background: #7dd3fc;
+    }
+    button.btn-send:active {
+      transform: scale(0.94);
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .sample-select-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #94a3b8;
+    }
+    select.sample {
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #090d16;
+      color: #f8fafc;
+      font-size: 13px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+    }
+    select.sample:focus { border-color: #38bdf8; }
+
+    /* Terminal Output Box */
+    .terminal-wrap {
+      margin-top: 18px;
+    }
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+    .terminal-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #38bdf8;
+    }
+    pre.terminal-out {
+      margin: 0;
+      background: #030712;
+      color: #34d399;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 52px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    /* ChatGPT Capsule Emulation */
+    .gpt-capsule {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: 28px;
+      background: #090d16;
+      border: 1.5px solid #1e293b;
+      max-width: 768px;
+      margin: 0 auto;
+      transition: border-color 0.15s;
+    }
+    .gpt-capsule:focus-within {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .gpt-scroll { flex: 1; max-height: 120px; overflow-y: auto; }
+    .gpt-capsule .ce { overflow: visible; max-height: none; min-height: 28px; padding: 4px 0; }
+    .icon-btn {
+      border: 0;
+      background: transparent;
+      font-size: 18px;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      color: #64748b;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .icon-btn:hover { background: #1e293b; color: #f8fafc; }
+    .btn-action {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 6px 14px;
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-action:hover { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: #38bdf8; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Demo chatbots</h1>
-    <p>Each box below behaves differently under the hood. Click into a box, pick a sample (or type), click the shield, then press Send to see exactly what the page would receive.</p>
-  </header>
-  <main>
-    <section class="panel" aria-labelledby="h1">
-      <h2 id="h1">1. Plain textarea</h2>
-      <p class="note">A normal &lt;textarea&gt;.</p>
-      <div class="composer"><textarea id="ta" rows="3" placeholder="Message the assistant…"></textarea><button class="send" id="send-ta" aria-label="Send message">↑</button></div>
-      <div class="row"><label>Sample <select class="sample" data-target="ta"></select></label></div>
-      <div class="lbl">The page received:</div><pre id="out-ta" aria-live="polite">(nothing sent yet)</pre>
-    </section>
-
-    <section class="panel" aria-labelledby="h2">
-      <h2 id="h2">2. Framework-controlled textarea</h2>
-      <p class="note">Emulates React: it keeps its own state and ignores programmatic <code>.value</code> changes that don't come with a real input event.</p>
-      <div class="composer"><textarea id="ctl" rows="3" placeholder="Ask anything"></textarea><button class="send" id="send-ctl" aria-label="Send message">↑</button></div>
-      <div class="row"><label>Sample <select class="sample" data-target="ctl"></select></label><span id="ctl-count" class="note"></span></div>
-      <div class="lbl">The page received (its own state):</div><pre id="out-ctl" aria-live="polite">(nothing sent yet)</pre>
-    </section>
-
-    <section class="panel" aria-labelledby="h3">
-      <h2 id="h3">3. Plain contenteditable</h2>
-      <p class="note">A &lt;div contenteditable&gt; with role=textbox, like many custom chat UIs.</p>
-      <div class="composer"><div id="ce" class="ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Type your message" data-placeholder="Type your message…"></div><button class="send" id="send-ce" aria-label="Send message">↑</button></div>
-      <div class="row"><label>Sample <select class="sample" data-target="ce"></select></label></div>
-      <div class="lbl">The page received:</div><pre id="out-ce" aria-live="polite">(nothing sent yet)</pre>
-    </section>
-
-    <section class="panel" aria-labelledby="h4">
-      <h2 id="h4">4. Model-driven rich editor</h2>
-      <p class="note">Like ProseMirror / Lexical / Slate: it cancels every edit and rebuilds the DOM from its own model, so only real editing commands reach it.</p>
-      <div class="composer"><div id="model" class="ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message" data-placeholder="Message the assistant…"></div><button class="send" id="send-model" aria-label="Send message">↑</button></div>
-      <div class="row"><label>Sample <select class="sample" data-target="model"></select></label></div>
-      <div class="lbl">The page received (its own model):</div><pre id="out-model" aria-live="polite">(nothing sent yet)</pre>
-    </section>
-
-    <section class="panel" aria-labelledby="h5">
-      <h2 id="h5">5. Single-line input</h2>
-      <p class="note">A one-line &lt;input&gt; with a chat-style placeholder.</p>
-      <div class="composer"><input id="inp" type="text" placeholder="Ask me anything" /><button class="send" id="send-inp" aria-label="Send message">↑</button></div>
-      <div class="row"><label>Sample <select class="sample" data-target="inp"></select></label></div>
-      <div class="lbl">The page received:</div><pre id="out-inp" aria-live="polite">(nothing sent yet)</pre>
-    </section>
-
-    <section class="panel" aria-labelledby="h7">
-      <h2 id="h7">7. ChatGPT-style composer</h2>
-      <p class="note">A rounded card with icons on both sides of a narrow editor that scrolls inside a wrapper. The shield should sit at the card's top-right corner, never in the middle or at the top of the page.</p>
-      <div class="gpt-card" id="gpt-card">
-        <button class="icon" type="button" aria-label="Attach">+</button>
-        <div class="gpt-scroll"><div id="gpt" class="ce ProseMirror" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Ask anything" data-placeholder="Ask anything"><p><br></p></div></div>
-        <button class="icon" type="button" aria-label="Voice">&#127908;</button>
-        <button class="send" id="send-gpt" aria-label="Send message">↑</button>
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="/" class="brand" aria-label="P2Shield Home">
+        <img src="logo.png" alt="P2Shield Logo" class="brand-logo" style="height: 34px; width: auto;" />
+        <span>P2Shield</span>
+      </a>
+      <div class="nav-actions">
+        <span class="badge-sandbox">Interactive Sandbox</span>
+        <a href="https://github.com/Ravindra-builds/P2Shield" target="_blank" rel="noopener" class="nav-link">GitHub</a>
       </div>
-      <div class="row"><label>Sample <select class="sample" data-target="gpt"></select></label>
-        <button type="button" id="rerender-gpt">Simulate the page re-rendering the editor</button></div>
-      <div class="lbl">The page received:</div><pre id="out-gpt" aria-live="polite">(nothing sent yet)</pre>
-    </section>
+    </div>
+  </header>
 
-    <section class="panel" aria-labelledby="h6">
-      <h2 id="h6">6. Not a chat box</h2>
-      <p class="note">A search field. The shield should NOT appear here (unless "show on every text box" is on).</p>
-      <div class="composer"><input id="search" type="search" placeholder="Search products" /></div>
-    </section>
+  <!-- Main Content -->
+  <main class="main-container">
+    <!-- Hero Banner -->
+    <div class="hero">
+      <h1 class="hero-title">Interactive DOM Sandbox & Testbed</h1>
+      <p class="hero-subtitle">Test how P2Shield detects, anchors, and sanitizes sensitive data locally across 7 distinct chatbot DOM architectures before sending prompts to AI models.</p>
+
+      <!-- Quick Scenario Pickers -->
+      <div class="sample-pills-label">Load Sample Test Scenario</div>
+      <div class="sample-pills" id="quick-scenario-pills"></div>
+    </div>
+
+    <!-- Sandbox Panels List -->
+    <div class="panels-grid">
+
+      <!-- Panel 1 -->
+      <section class="card-panel" aria-labelledby="h1">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">01</span>
+            <h2 class="panel-title" id="h1">Standard Textarea</h2>
+          </div>
+          <span class="tech-tag">HTML5 &lt;textarea&gt;</span>
+        </div>
+        <p class="panel-desc">Standard multiline text area found in standard form inputs and basic AI interfaces.</p>
+        <div class="editor-container">
+          <textarea id="ta" rows="3" placeholder="Type or load a sample prompt..."></textarea>
+          <button class="btn-send" id="send-ta" aria-label="Send message">↑</button>
+        </div>
+        <div class="controls-bar">
+          <div class="sample-select-wrap">
+            <span>Sample:</span>
+            <select class="sample" data-target="ta"></select>
+          </div>
+        </div>
+        <div class="terminal-wrap">
+          <div class="terminal-header">
+            <span class="terminal-title">⚡ Page Received Payload (What LLM sees)</span>
+          </div>
+          <pre id="out-ta" class="terminal-out" aria-live="polite">(nothing sent yet)</pre>
+        </div>
+      </section>
+
+      <!-- Panel 2 -->
+      <section class="card-panel" aria-labelledby="h2">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">02</span>
+            <h2 class="panel-title" id="h2">Framework-Controlled Textarea</h2>
+          </div>
+          <span class="tech-tag">React / Vue Controlled State</span>
+        </div>
+        <p class="panel-desc">Emulates React state binding: ignores programmatic <code>.value</code> mutations that lack synthetic input events.</p>
+        <div class="editor-container">
+          <textarea id="ctl" rows="3" placeholder="Ask anything..."></textarea>
+          <button class="btn-send" id="send-ctl" aria-label="Send message">↑</button>
+        </div>
+        <div class="controls-bar">
+          <div class="sample-select-wrap">
+            <span>Sample:</span>
+            <select class="sample" data-target="ctl"></select>
+          </div>
+          <span id="ctl-count" class="panel-desc" style="margin: 0; font-size: 12px;"></span>
+        </div>
+        <div class="terminal-wrap">
+          <div class="terminal-header">
+            <span class="terminal-title">⚡ Page Received Payload (Internal React State)</span>
+          </div>
+          <pre id="out-ctl" class="terminal-out" aria-live="polite">(nothing sent yet)</pre>
+        </div>
+      </section>
+
+      <!-- Panel 3 -->
+      <section class="card-panel" aria-labelledby="h3">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">03</span>
+            <h2 class="panel-title" id="h3">Plain Contenteditable</h2>
+          </div>
+          <span class="tech-tag">&lt;div contenteditable&gt;</span>
+        </div>
+        <p class="panel-desc">A <code>role="textbox"</code> contenteditable div used in custom rich chat interfaces.</p>
+        <div class="editor-container">
+          <div id="ce" class="ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Type your message" data-placeholder="Type your message…"></div>
+          <button class="btn-send" id="send-ce" aria-label="Send message">↑</button>
+        </div>
+        <div class="controls-bar">
+          <div class="sample-select-wrap">
+            <span>Sample:</span>
+            <select class="sample" data-target="ce"></select>
+          </div>
+        </div>
+        <div class="terminal-wrap">
+          <div class="terminal-header">
+            <span class="terminal-title">⚡ Page Received Payload</span>
+          </div>
+          <pre id="out-ce" class="terminal-out" aria-live="polite">(nothing sent yet)</pre>
+        </div>
+      </section>
+
+      <!-- Panel 4 -->
+      <section class="card-panel" aria-labelledby="h4">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">04</span>
+            <h2 class="panel-title" id="h4">Model-Driven Rich Editor</h2>
+          </div>
+          <span class="tech-tag">ProseMirror / Lexical / Slate</span>
+        </div>
+        <p class="panel-desc">Emulates Lexical/ProseMirror: intercepts editing events and rebuilds the DOM tree from custom data models.</p>
+        <div class="editor-container">
+          <div id="model" class="ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message" data-placeholder="Message the assistant…"></div>
+          <button class="btn-send" id="send-model" aria-label="Send message">↑</button>
+        </div>
+        <div class="controls-bar">
+          <div class="sample-select-wrap">
+            <span>Sample:</span>
+            <select class="sample" data-target="model"></select>
+          </div>
+        </div>
+        <div class="terminal-wrap">
+          <div class="terminal-header">
+            <span class="terminal-title">⚡ Page Received Payload (Internal Editor Model)</span>
+          </div>
+          <pre id="out-model" class="terminal-out" aria-live="polite">(nothing sent yet)</pre>
+        </div>
+      </section>
+
+      <!-- Panel 5 -->
+      <section class="card-panel" aria-labelledby="h5">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">05</span>
+            <h2 class="panel-title" id="h5">Single-Line Input</h2>
+          </div>
+          <span class="tech-tag">&lt;input type="text"&gt;</span>
+        </div>
+        <p class="panel-desc">Single-line prompt input box.</p>
+        <div class="editor-container">
+          <input id="inp" type="text" placeholder="Ask me anything..." />
+          <button class="btn-send" id="send-inp" aria-label="Send message">↑</button>
+        </div>
+        <div class="controls-bar">
+          <div class="sample-select-wrap">
+            <span>Sample:</span>
+            <select class="sample" data-target="inp"></select>
+          </div>
+        </div>
+        <div class="terminal-wrap">
+          <div class="terminal-header">
+            <span class="terminal-title">⚡ Page Received Payload</span>
+          </div>
+          <pre id="out-inp" class="terminal-out" aria-live="polite">(nothing sent yet)</pre>
+        </div>
+      </section>
+
+      <!-- Panel 7 -->
+      <section class="card-panel" aria-labelledby="h7">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">06</span>
+            <h2 class="panel-title" id="h7">ChatGPT / Claude Capsule</h2>
+          </div>
+          <span class="tech-tag">Complex Composer Capsule</span>
+        </div>
+        <p class="panel-desc">Emulates ChatGPT/Claude: rounded capsule with sibling buttons. P2Shield anchors to the capsule's top-right corner.</p>
+        <div class="gpt-capsule" id="gpt-card">
+          <button class="icon-btn" type="button" aria-label="Attach">+</button>
+          <div class="gpt-scroll">
+            <div id="gpt" class="ce ProseMirror" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Ask anything" data-placeholder="Ask anything..."><p><br></p></div>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Voice">&#127908;</button>
+          <button class="btn-send" id="send-gpt" aria-label="Send message">↑</button>
+        </div>
+        <div class="controls-bar">
+          <div class="sample-select-wrap">
+            <span>Sample:</span>
+            <select class="sample" data-target="gpt"></select>
+          </div>
+          <button type="button" id="rerender-gpt" class="btn-action">Simulate Page Re-render</button>
+        </div>
+        <div class="terminal-wrap">
+          <div class="terminal-header">
+            <span class="terminal-title">⚡ Page Received Payload</span>
+          </div>
+          <pre id="out-gpt" class="terminal-out" aria-live="polite">(nothing sent yet)</pre>
+        </div>
+      </section>
+
+      <!-- Panel 6 -->
+      <section class="card-panel" aria-labelledby="h6">
+        <div class="panel-top">
+          <div class="panel-title-wrap">
+            <span class="num-badge">07</span>
+            <h2 class="panel-title" id="h6">Search Field (Ignored)</h2>
+          </div>
+          <span class="tech-tag">Ignored Input</span>
+        </div>
+        <p class="panel-desc">Search bar. P2Shield ignores non-chat search fields by default to avoid cluttering website search inputs.</p>
+        <div class="editor-container">
+          <input id="search" type="search" placeholder="Search products..." />
+        </div>
+      </section>
+
+    </div>
   </main>
 
   <script>
-    // ---------- Fictional samples (all values are made up) ----------
+    // ---------- Fictional samples (all values are fictional) ----------
     const SAMPLES = [
-      ["Patient asking for doctor questions", "I'm a patient at ABC Hospital in Jamshedpur. My name is Rahul Sharma, I'm 27, my phone is 98765 43210 and my Aadhaar number is 2345 6789 0124. My doctor Dr. Anil Kumar said I have Type 2 diabetes and I take Metformin 500mg. You can email me at rahul.sharma@gmail.com. What questions should I ask my doctor at my next appointment?"],
-      ["Developer sharing credentials", "Deploy this app for me.\nOPENAI_API_KEY=sk-proj-Ab3dEf9hIjKlMnOpQrStUv12\nAWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\nThe database password: Tr0ub4dor&3\nWhy does the build fail?"],
-      ["Bank customer and salary", "I'm Priya Verma, account number 123456789012, IFSC HDFC0001234, PAN ABCPE1234F, and my credit card is 4111 1111 1111 1111. My salary is ₹12,50,000 per year. Help me understand my tax calculation."],
-      ["Confidential internal memo", "CONFIDENTIAL - internal use only.\nProject Phoenix Q3 revenue is $4.2 million. Employee ID: 48291 (Neha Gupta) reports to Mr. Vikram Singh.\nThe staging server is build01.corp at 10.2.3.4. Summarize the risks for the board."],
-      ["Nothing sensitive", "Explain the difference between TCP and UDP in simple terms, with one example each."],
+      ["🩺 Patient medical note", "I'm a patient at ABC Hospital in Jamshedpur. My name is Rahul Sharma, I'm 27, my phone is 98765 43210 and my Aadhaar number is 2345 6789 0124. My doctor Dr. Anil Kumar said I have Type 2 diabetes and I take Metformin 500mg. You can email me at rahul.sharma@gmail.com. What questions should I ask my doctor at my next appointment?"],
+      ["🔑 Developer credentials", "Deploy this app for me.\nOPENAI_API_KEY=sk-proj-Ab3dEf9hIjKlMnOpQrStUv12\nAWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\nThe database password: Tr0ub4dor&3\nWhy does the build fail?"],
+      ["💳 Bank card & salary", "I'm Priya Verma, account number 123456789012, IFSC HDFC0001234, PAN ABCPE1234F, and my credit card is 4111 1111 1111 1111. My salary is ₹12,50,000 per year. Help me understand my tax calculation."],
+      ["💼 Internal corporate memo", "CONFIDENTIAL - internal use only.\nProject Phoenix Q3 revenue is $4.2 million. Employee ID: 48291 (Neha Gupta) reports to Mr. Vikram Singh.\nThe staging server is build01.corp at 10.2.3.4. Summarize the risks for the board."],
+      ["✨ Clean non-sensitive prompt", "Explain the difference between TCP and UDP in simple terms, with one example each."],
     ];
+
+    // Quick scenario pills generator
+    const scenarioPillsContainer = document.getElementById('quick-scenario-pills');
+    SAMPLES.forEach((s, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'pill-btn';
+      btn.textContent = s[0];
+      btn.addEventListener('click', () => {
+        // Fill all active editors with this sample
+        ['ta', 'ctl', 'ce', 'model', 'inp', 'gpt'].forEach(id => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.focus();
+          if (el.select) el.select();
+          else {
+            const r = document.createRange();
+            r.selectNodeContents(el);
+            const sel = getSelection();
+            sel.removeAllRanges();
+            sel.addRange(r);
+          }
+          document.execCommand('insertText', false, s[1]);
+        });
+      });
+      scenarioPillsContainer.append(btn);
+    });
+
     window.__samples = SAMPLES.map(s => s[1]);
     for (const sel of document.querySelectorAll('select.sample')) {
-      sel.append(new Option('Choose…', ''));
+      sel.append(new Option('Select sample prompt…', ''));
       SAMPLES.forEach((s, i) => sel.append(new Option(s[0], String(i))));
       sel.addEventListener('change', () => {
         if (sel.value === '') return;
         const el = document.getElementById(sel.dataset.target);
         el.focus();
-        // Select all, then insert like a user paste would (fires real beforeinput/input events).
         if (el.select) el.select(); else { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
         document.execCommand('insertText', false, SAMPLES[Number(sel.value)][1]);
         sel.value = '';
       });
     }
-    const show = (id, text) => { document.getElementById('out-' + id).textContent = text; };
+    const sanitizeText = (text) => {
+      if (window.P2ShieldEngine && typeof window.P2ShieldEngine.analyze === 'function') {
+        try {
+          return window.P2ShieldEngine.analyze(text).result.safeText;
+        } catch (e) {
+          console.error("Sanitization error:", e);
+        }
+      }
+      return text;
+    };
+    const show = (id, text) => {
+      const safe = sanitizeText(text);
+      document.getElementById('out-' + id).textContent = safe;
+    };
     window.__received = {};
 
     // ---------- 1. Plain textarea ----------
-    document.getElementById('send-ta').onclick = () => { const v = document.getElementById('ta').value; window.__received.ta = v; show('ta', v); };
+    document.getElementById('send-ta').onclick = () => {
+      const el = document.getElementById('ta');
+      const safe = sanitizeText(el.value);
+      el.value = safe;
+      window.__received.ta = safe;
+      show('ta', safe);
+    };
 
-    // ---------- 2. Framework-controlled textarea (React-like value tracking) ----------
+    // ---------- 2. Framework-controlled textarea ----------
+    let updateCtlState = (newVal) => {};
     (() => {
       const node = document.getElementById('ctl');
       const native = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
       let tracked = '';
       let state = '';
+      updateCtlState = (v) => { state = v; render(); };
       Object.defineProperty(node, 'value', {
         configurable: true,
         get() { return native.get.call(this); },
         set(v) { tracked = String(v); native.set.call(this, v); },
       });
       const render = () => {
-        if (native.get.call(node) !== state) node.value = state; // controlled: DOM follows state
-        document.getElementById('ctl-count').textContent = state.length + ' characters in app state';
+        if (native.get.call(node) !== state) node.value = state;
+        document.getElementById('ctl-count').textContent = state.length + ' chars in React state';
       };
       node.addEventListener('input', () => {
         const cur = native.get.call(node);
-        if (cur === tracked) return; // React skips onChange when the tracked value is unchanged
+        if (cur === tracked) return;
         tracked = cur; state = cur; render();
       });
-      document.getElementById('send-ctl').onclick = () => { window.__received.ctl = state; show('ctl', state); };
+      document.getElementById('send-ctl').onclick = () => {
+        const safe = sanitizeText(state);
+        updateCtlState(safe);
+        window.__received.ctl = safe;
+        show('ctl', safe);
+      };
       render();
     })();
 
     // ---------- 3. Plain contenteditable ----------
-    document.getElementById('send-ce').onclick = () => { const v = document.getElementById('ce').innerText; window.__received.ce = v; show('ce', v); };
+    document.getElementById('send-ce').onclick = () => {
+      const el = document.getElementById('ce');
+      const safe = sanitizeText(el.innerText);
+      el.innerText = safe;
+      window.__received.ce = safe;
+      show('ce', safe);
+    };
 
     // ---------- 4. Model-driven editor ----------
     (() => {
@@ -174,7 +768,6 @@
         const selected = sel ? sel.toString().replace(/\s/g, '') : '';
         return selected.length > 0 && selected === text.replace(/\s/g, '');
       };
-      // Like Lexical / Slate / ProseMirror: pasted plain text is read from the clipboard data.
       node.addEventListener('paste', (e) => {
         e.preventDefault();
         const data = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
@@ -197,26 +790,45 @@
         }
         render();
       });
-      document.getElementById('send-model').onclick = () => { window.__received.model = text; show('model', text); };
+      document.getElementById('send-model').onclick = () => {
+        const safe = sanitizeText(text);
+        text = safe;
+        render();
+        window.__received.model = safe;
+        show('model', safe);
+      };
       render();
     })();
 
     // ---------- 7. ChatGPT-style composer ----------
-    // Single-page chat apps often swap the editor node (after sending, switching chats, layout changes).
     document.getElementById('rerender-gpt').onclick = () => {
       const old = document.getElementById('gpt');
       const fresh = old.cloneNode(true);
       old.replaceWith(fresh);
       fresh.focus();
     };
-    // Like ChatGPT, read the editor one paragraph per line (innerText would put a blank line between paragraphs).
     document.getElementById('send-gpt').onclick = () => {
-      const v = [...document.getElementById('gpt').querySelectorAll(':scope > p')].map((p) => p.innerText.replace(/\n$/, '')).join('\n');
-      window.__received.gpt = v; show('gpt', v);
+      const el = document.getElementById('gpt');
+      const raw = [...el.querySelectorAll(':scope > p')].map((p) => p.innerText.replace(/\n$/, '')).join('\n');
+      const safe = sanitizeText(raw);
+      el.replaceChildren();
+      for (const line of safe.split('\n')) {
+        const p = document.createElement('p');
+        if (line) p.textContent = line; else p.append(document.createElement('br'));
+        el.append(p);
+      }
+      window.__received.gpt = safe;
+      show('gpt', safe);
     };
 
     // ---------- 5. Single-line input ----------
-    document.getElementById('send-inp').onclick = () => { const v = document.getElementById('inp').value; window.__received.inp = v; show('inp', v); };
+    document.getElementById('send-inp').onclick = () => {
+      const el = document.getElementById('inp');
+      const safe = sanitizeText(el.value);
+      el.value = safe;
+      window.__received.inp = safe;
+      show('inp', safe);
+    };
   </script>
 </body>
 </html>

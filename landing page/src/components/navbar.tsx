@@ -23,6 +23,9 @@ export const Navbar: React.FC = () => {
           <a href="#profiles" className="rounded-full px-4 py-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white">
             Profiles
           </a>
+          <a href="#faq" className="rounded-full px-4 py-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white">
+            FAQ
+          </a>
           <a href="#install" className="rounded-full px-4 py-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white">
             Install
           </a>
