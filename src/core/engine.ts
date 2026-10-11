@@ -45,3 +45,5 @@ export function quickScan(text: string, profile: Profile) {
 
 export { evaluate };
 export type { Override };
+export { restore, restoreDetailed, EphemeralVault, SyntheticGenerator } from './vault';
+export type { RestoreResult, RestoredTokenInfo } from './vault';

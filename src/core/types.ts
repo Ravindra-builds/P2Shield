@@ -73,7 +73,8 @@ export type Action =
   | 'TOKENIZE'
   | 'REDACT'
   | 'GENERALIZE'
-  | 'REMOVE_SECRET';
+  | 'REMOVE_SECRET'
+  | 'SYNTHESIZE';
 
 export interface PolicyRule {
   action: Action;

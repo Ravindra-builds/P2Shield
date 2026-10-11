@@ -5,6 +5,7 @@ import { isCredentialType } from './detectors';
 import { BUILTIN_PROFILES } from './policy';
 import { computeRisk, riskLevel, RESIDUAL } from './risk';
 import type { Action, AnalysisResult, Detection, EntityType, Finding, PolicyRule, Profile } from './types';
+import { SyntheticGenerator } from './vault';
 
 export type Override = 'KEEP' | 'PROTECT';
 
@@ -160,6 +161,10 @@ class Tokenizer {
     return tok;
   }
 
+  record(token: string, original: string): void {
+    this.map[token] = original;
+  }
+
   private next(label: string): string {
     const count = (this.counters.get(label) ?? 0) + 1;
     this.counters.set(label, count);
@@ -202,18 +207,32 @@ export function decideAction(d: Detection, profile: Profile, override?: Override
   return action;
 }
 
-function replacementFor(d: Detection, action: Action, tk: Tokenizer): string {
+function replacementFor(d: Detection, action: Action, tk: Tokenizer, syn: SyntheticGenerator): string {
   switch (action) {
     case 'KEEP':
       return d.text;
-    case 'MASK':
-      return maskValue(d);
+    case 'MASK': {
+      const masked = maskValue(d);
+      tk.record(masked, d.text);
+      return masked;
+    }
     case 'TOKENIZE':
       return tk.token(d);
-    case 'REDACT':
-      return `[REDACTED_${labelOf(d)}]`;
-    case 'GENERALIZE':
-      return generalizeValue(d) ?? `[REDACTED_${labelOf(d)}]`;
+    case 'SYNTHESIZE': {
+      const synth = syn.generate(d.type, d.text);
+      tk.record(synth, d.text);
+      return synth;
+    }
+    case 'REDACT': {
+      const redacted = `[REDACTED_${labelOf(d)}]`;
+      tk.record(redacted, d.text);
+      return redacted;
+    }
+    case 'GENERALIZE': {
+      const generalized = generalizeValue(d) ?? `[REDACTED_${labelOf(d)}]`;
+      tk.record(generalized, d.text);
+      return generalized;
+    }
     case 'REMOVE_SECRET':
       return '[SECRET_REMOVED]';
   }
@@ -229,13 +248,14 @@ export function evaluate(
 ): AnalysisResult {
   const sorted = [...detections].sort((a, b) => a.start - b.start);
   const tk = new Tokenizer();
+  const syn = new SyntheticGenerator();
   const findings: Finding[] = [];
   let out = '';
   let cursor = 0;
   for (const d of sorted) {
     if (d.start < cursor) continue; // defensive: overlapping input
     const action = decideAction(d, profile, overrides[d.id]);
-    const replacement = replacementFor(d, action, tk);
+    const replacement = replacementFor(d, action, tk, syn);
     out += text.slice(cursor, d.start) + replacement;
     cursor = d.end;
     findings.push({ ...d, action, replacement, applied: action !== 'KEEP' });

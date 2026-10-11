@@ -2432,7 +2432,8 @@
     MASK: 0.25,
     TOKENIZE: 0.1,
     REDACT: 0,
-    REMOVE_SECRET: 0
+    REMOVE_SECRET: 0,
+    SYNTHESIZE: 0.1
   };
   function weightOf(type, label) {
     if (label && label in LABEL_WEIGHT) return LABEL_WEIGHT[label];
@@ -2482,6 +2483,79 @@
     }
     return Math.max(0, Math.min(100, Math.round(100 * (1 - keep))));
   }
+
+  // src/core/vault.ts
+  var SYNTHETIC_NAMES = [
+    "Alex Morgan",
+    "Jordan Lee",
+    "Samira Khan",
+    "Taylor Brooks",
+    "Arjun Patel",
+    "Elena Rostova",
+    "Marcus Vance",
+    "Chloe Bennett",
+    "Devon Chen",
+    "Maya Lin"
+  ];
+  var SYNTHETIC_ORGS = [
+    "Acme Global",
+    "Apex Dynamics",
+    "Nexus Health",
+    "Beacon Enterprises",
+    "Horizon Solutions"
+  ];
+  var SYNTHETIC_CITIES = ["Springfield", "Riverdale", "Fairview", "Brookfield", "Greenville"];
+  var SyntheticGenerator = class {
+    constructor() {
+      __publicField(this, "cache", /* @__PURE__ */ new Map());
+      __publicField(this, "counter", 0);
+    }
+    generate(type, original) {
+      const key = `${type}:${original.toLowerCase().trim()}`;
+      const cached = this.cache.get(key);
+      if (cached) return cached;
+      const idx = this.counter++;
+      let result = "";
+      switch (type) {
+        case "PERSON":
+          result = SYNTHETIC_NAMES[idx % SYNTHETIC_NAMES.length];
+          break;
+        case "EMAIL":
+          result = `user${idx + 1}@privacy-mock.local`;
+          break;
+        case "PHONE":
+          result = `+1 (555) 010-${String(1e3 + idx % 9e3).slice(-4)}`;
+          break;
+        case "CREDIT_CARD":
+          result = "4000 1234 5678 9010";
+          break;
+        case "ORGANIZATION":
+          result = SYNTHETIC_ORGS[idx % SYNTHETIC_ORGS.length];
+          break;
+        case "LOCATION":
+          result = SYNTHETIC_CITIES[idx % SYNTHETIC_CITIES.length];
+          break;
+        case "IP_ADDRESS":
+          result = `192.0.2.${idx % 250 + 1}`;
+          break;
+        case "DATE_OF_BIRTH":
+          result = "1990-01-01";
+          break;
+        case "AGE":
+          result = "30";
+          break;
+        default:
+          result = `[SYNTHETIC_${type}_${idx + 1}]`;
+          break;
+      }
+      this.cache.set(key, result);
+      return result;
+    }
+    reset() {
+      this.cache.clear();
+      this.counter = 0;
+    }
+  };
 
   // src/core/sanitize.ts
   function labelOf(d) {
@@ -2620,6 +2694,9 @@
       this.map[tok] = d.text;
       return tok;
     }
+    record(token, original) {
+      this.map[token] = original;
+    }
     next(label) {
       const count = (this.counters.get(label) ?? 0) + 1;
       this.counters.set(label, count);
@@ -2644,18 +2721,32 @@
     }
     return action;
   }
-  function replacementFor(d, action, tk) {
+  function replacementFor(d, action, tk, syn) {
     switch (action) {
       case "KEEP":
         return d.text;
-      case "MASK":
-        return maskValue(d);
+      case "MASK": {
+        const masked = maskValue(d);
+        tk.record(masked, d.text);
+        return masked;
+      }
       case "TOKENIZE":
         return tk.token(d);
-      case "REDACT":
-        return `[REDACTED_${labelOf(d)}]`;
-      case "GENERALIZE":
-        return generalizeValue(d) ?? `[REDACTED_${labelOf(d)}]`;
+      case "SYNTHESIZE": {
+        const synth = syn.generate(d.type, d.text);
+        tk.record(synth, d.text);
+        return synth;
+      }
+      case "REDACT": {
+        const redacted = `[REDACTED_${labelOf(d)}]`;
+        tk.record(redacted, d.text);
+        return redacted;
+      }
+      case "GENERALIZE": {
+        const generalized = generalizeValue(d) ?? `[REDACTED_${labelOf(d)}]`;
+        tk.record(generalized, d.text);
+        return generalized;
+      }
       case "REMOVE_SECRET":
         return "[SECRET_REMOVED]";
     }
@@ -2663,13 +2754,14 @@
   function evaluate(text, detections, profile, mode, overrides = {}) {
     const sorted = [...detections].sort((a, b) => a.start - b.start);
     const tk = new Tokenizer();
+    const syn = new SyntheticGenerator();
     const findings = [];
     let out = "";
     let cursor = 0;
     for (const d of sorted) {
       if (d.start < cursor) continue;
       const action = decideAction(d, profile, overrides[d.id]);
-      const replacement = replacementFor(d, action, tk);
+      const replacement = replacementFor(d, action, tk, syn);
       out += text.slice(cursor, d.start) + replacement;
       cursor = d.end;
       findings.push({ ...d, action, replacement, applied: action !== "KEEP" });

@@ -3,6 +3,7 @@
 // background worker (Smart mode labelling and metadata-only audit entries).
 
 import { analyze, evaluate, quickScan } from '../core/engine';
+import { EphemeralVault, restore } from '../core/vault';
 import type { AiEntity, AnalysisResult, Detection, Profile } from '../core/types';
 import type { Override } from '../core/sanitize';
 import {
@@ -58,6 +59,83 @@ interface Session {
   smartNote?: string;
   /** Smart mode answer still on its way; cleared by Undo / toggles so a late answer can't overwrite them. */
   pendingSmart?: boolean;
+}
+
+const sessionVault = new EphemeralVault();
+let unmaskObserver: MutationObserver | null = null;
+
+function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEditor?: HTMLElement | null): void {
+  if (!map || Object.keys(map).length === 0) return;
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let current: Node | null;
+  while ((current = walker.nextNode())) {
+    if (currentEditor && currentEditor.contains(current)) continue;
+    const parent = current.parentElement;
+    if (
+      parent &&
+      (parent.tagName === 'P2SHIELD-HOST' ||
+        parent.closest('p2shield-host') ||
+        parent.isContentEditable ||
+        parent.tagName === 'TEXTAREA' ||
+        parent.tagName === 'INPUT')
+    ) {
+      continue;
+    }
+
+    const val = current.nodeValue;
+    if (val) {
+      const restored = restore(val, map);
+      if (restored !== val) {
+        current.nodeValue = restored;
+      }
+    }
+  }
+
+  if ('querySelectorAll' in root) {
+    const all = (root as ParentNode).querySelectorAll('*');
+    for (const el of all) {
+      if (el.shadowRoot) {
+        scanAndUnmaskTree(el.shadowRoot, map, currentEditor);
+      }
+    }
+  }
+}
+
+function enableResponseUnmasking(currentEditor?: HTMLElement | null): void {
+  const map = sessionVault.getActiveMap();
+  if (!map || Object.keys(map).length === 0) return;
+
+  if (document.body) {
+    scanAndUnmaskTree(document.body, map, currentEditor);
+  }
+
+  if (!unmaskObserver && typeof MutationObserver !== 'undefined' && document.body) {
+    unmaskObserver = new MutationObserver(() => {
+      const activeMap = sessionVault.getActiveMap();
+      if (!activeMap || Object.keys(activeMap).length === 0) return;
+      scanAndUnmaskTree(document.body, activeMap, currentEditor);
+    });
+
+    unmaskObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  const interval = window.setInterval(() => {
+    const activeMap = sessionVault.getActiveMap();
+    if (!activeMap || Object.keys(activeMap).length === 0) {
+      window.clearInterval(interval);
+      return;
+    }
+    if (document.body) {
+      scanAndUnmaskTree(document.body, activeMap, currentEditor);
+    }
+  }, 400);
+
+  window.setTimeout(() => window.clearInterval(interval), 30000);
 }
 
 async function start(): Promise<void> {
@@ -430,6 +508,10 @@ async function start(): Promise<void> {
       ui.setBadge(0, null);
       repositionAfterEdit();
       audit(result);
+      if (result.tokenMap && Object.keys(result.tokenMap).length > 0) {
+        sessionVault.register(location.href, result.tokenMap);
+        enableResponseUnmasking(editor);
+      }
       if (ok) {
         chipFor(s);
         if (pending) {
@@ -492,6 +574,10 @@ async function start(): Promise<void> {
     s.result = result;
     s.mode = 'smart';
     s.smartNote = extra > 0 ? `AI protected ${extra} more` : extra < 0 ? 'AI kept details needed for your question' : 'AI found nothing extra';
+    if (result.tokenMap && Object.keys(result.tokenMap).length > 0) {
+      sessionVault.register(location.href, result.tokenMap);
+      enableResponseUnmasking(s.editor);
+    }
     if (after) chipFor(s);
     else {
       ui.setResult(result, profile.name);

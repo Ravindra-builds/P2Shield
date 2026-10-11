@@ -164,7 +164,7 @@ export function normalizeProfile(raw: unknown, fallbackId = 'custom'): Profile |
   const r = raw as Partial<Profile>;
   const base = getBuiltinProfile(typeof r.id === 'string' ? r.id : DEFAULT_PROFILE_ID);
   const rules = { ...base.rules };
-  const actions: Action[] = ['KEEP', 'MASK', 'TOKENIZE', 'REDACT', 'GENERALIZE', 'REMOVE_SECRET'];
+  const actions: Action[] = ['KEEP', 'MASK', 'TOKENIZE', 'REDACT', 'GENERALIZE', 'REMOVE_SECRET', 'SYNTHESIZE'];
   if (r.rules && typeof r.rules === 'object') {
     for (const t of ENTITY_TYPES) {
       if (DANGEROUS_KEYS.has(t as string)) continue;
