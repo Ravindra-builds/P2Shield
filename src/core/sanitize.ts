@@ -285,6 +285,6 @@ export function evaluate(
     levelAfter: riskLevel(riskAfter),
     mode,
     profileId: profile.id,
-    tokenMap: tk.map,
+    tokenMap: { ...syn.getAllMappings(), ...tk.map },
   };
 }

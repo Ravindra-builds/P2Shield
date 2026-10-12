@@ -3,7 +3,7 @@
 // background worker (Smart mode labelling and metadata-only audit entries).
 
 import { analyze, evaluate, quickScan } from '../core/engine';
-import { EphemeralVault, restore } from '../core/vault';
+import { EncryptedConversationVault, EphemeralVault, extractConversationId, restore } from '../core/vault';
 import type { AiEntity, AnalysisResult, Detection, Profile } from '../core/types';
 import type { Override } from '../core/sanitize';
 import {
@@ -62,7 +62,27 @@ interface Session {
 }
 
 const sessionVault = new EphemeralVault();
+const encryptedVault = new EncryptedConversationVault();
 let unmaskObserver: MutationObserver | null = null;
+
+/**
+ * Selectors for user message bubbles across major LLMs (ChatGPT, Gemini, Claude, Grok).
+ * User sent bubbles must NEVER be unmasked so the user can see that secrets were shielded.
+ */
+const USER_BUBBLE_SELECTOR = [
+  '[data-message-author-role="user"]',
+  '[data-role="user"]',
+  'user-query',
+  '.query-text',
+  '.user-turn',
+  '[data-testid*="user-message"]',
+  '[data-testid*="user-turn"]',
+  '[data-testid="user-message"]',
+  '.font-user-message',
+  '.user-message',
+  '.user-bubble',
+  '.user-prompt',
+].join(', ');
 
 function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEditor?: HTMLElement | null): void {
   if (!map || Object.keys(map).length === 0) return;
@@ -78,7 +98,8 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
         parent.closest('p2shield-host') ||
         parent.isContentEditable ||
         parent.tagName === 'TEXTAREA' ||
-        parent.tagName === 'INPUT')
+        parent.tagName === 'INPUT' ||
+        parent.closest(USER_BUBBLE_SELECTOR))
     ) {
       continue;
     }
@@ -509,7 +530,10 @@ async function start(): Promise<void> {
       repositionAfterEdit();
       audit(result);
       if (result.tokenMap && Object.keys(result.tokenMap).length > 0) {
+        const convId = extractConversationId(location.href);
         sessionVault.register(location.href, result.tokenMap);
+        sessionVault.register(convId, result.tokenMap);
+        void encryptedVault.save(convId, result.tokenMap);
         enableResponseUnmasking(editor);
       }
       if (ok) {
@@ -575,7 +599,10 @@ async function start(): Promise<void> {
     s.mode = 'smart';
     s.smartNote = extra > 0 ? `AI protected ${extra} more` : extra < 0 ? 'AI kept details needed for your question' : 'AI found nothing extra';
     if (result.tokenMap && Object.keys(result.tokenMap).length > 0) {
+      const convId = extractConversationId(location.href);
       sessionVault.register(location.href, result.tokenMap);
+      sessionVault.register(convId, result.tokenMap);
+      void encryptedVault.save(convId, result.tokenMap);
       enableResponseUnmasking(s.editor);
     }
     if (after) chipFor(s);
@@ -682,7 +709,66 @@ async function start(): Promise<void> {
   document.addEventListener('paste', () => window.setTimeout(scheduleScan, 50), true);
   window.addEventListener('scroll', reposition, true);
   window.addEventListener('resize', reposition);
-  window.setInterval(reposition, 400);
+  window.setInterval(() => {
+    reposition();
+    void handleLocationChange();
+  }, 400);
+
+  // ---- Encrypted Vault initial restoration (F5 reload) & SPA navigation ----
+  const initialConvId = extractConversationId(location.href);
+  void encryptedVault.load(initialConvId).then((storedMap) => {
+    if (storedMap && Object.keys(storedMap).length > 0) {
+      sessionVault.register(location.href, storedMap);
+      sessionVault.register(initialConvId, storedMap);
+      enableResponseUnmasking();
+    }
+  });
+
+  let lastHref = location.href;
+  let lastConvId = initialConvId;
+
+  async function handleLocationChange(): Promise<void> {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    const newConvId = extractConversationId(location.href);
+    if (newConvId === lastConvId) return;
+
+    const oldConvId = lastConvId;
+    lastConvId = newConvId;
+
+    // Migrate tokens if navigating from a root/initial chat prompt to a newly created conversation ID
+    const isInitialChat =
+      oldConvId.endsWith(':/') || oldConvId.endsWith(':/app') || oldConvId.endsWith(':/chat');
+    if (isInitialChat && !newConvId.endsWith(':/') && !newConvId.endsWith(':/app') && !newConvId.endsWith(':/chat')) {
+      await encryptedVault.migrate(oldConvId, newConvId);
+    }
+
+    // Load tokens for the newly active conversation
+    const convTokens = await encryptedVault.load(newConvId);
+    if (convTokens && Object.keys(convTokens).length > 0) {
+      sessionVault.register(location.href, convTokens);
+      sessionVault.register(newConvId, convTokens);
+      enableResponseUnmasking();
+    }
+  }
+
+  // Intercept History API to detect client-side route transitions (ChatGPT, Claude, Gemini, Grok)
+  const origPushState = history.pushState;
+  history.pushState = function (...args) {
+    const res = origPushState.apply(this, args);
+    void handleLocationChange();
+    return res;
+  };
+
+  const origReplaceState = history.replaceState;
+  history.replaceState = function (...args) {
+    const res = origReplaceState.apply(this, args);
+    void handleLocationChange();
+    return res;
+  };
+
+  window.addEventListener('popstate', () => void handleLocationChange());
+  window.addEventListener('hashchange', () => void handleLocationChange());
 
   // Already-focused editor at load time (e.g. autofocus on a chat page).
   const initial = resolveEditable(deepActiveElement());

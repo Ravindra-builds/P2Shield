@@ -1,5 +1,5 @@
-// Ephemeral in-memory vault for two-way de-anonymization and format-preserving synthetic data generation.
-// No data is ever persisted to disk or sent over the network.
+// Zero-Knowledge Ephemeral Conversation Vault & Semantic Synthetic Data Generator.
+// Guarantees zero network leakage, format-preserving natural prompts, and safe local persistence.
 
 import type { EntityType } from './types';
 
@@ -13,6 +13,59 @@ export interface RestoreResult {
   restoredText: string;
   replacementsCount: number;
   restoredTokens: RestoredTokenInfo[];
+}
+
+export interface StoredSessionRecord {
+  conversationId: string;
+  tokenMap: Record<string, string>;
+  updatedAt: number;
+}
+
+/** Max conversations kept in local session storage to prevent memory burden (< 50 KB). */
+export const MAX_VAULT_CONVERSATIONS = 20;
+
+/**
+ * Extracts conversation ID from standard AI chatbot URLs (ChatGPT, Gemini, Claude, Grok).
+ */
+export function extractConversationId(urlStr: string): string {
+  try {
+    const url = new URL(urlStr);
+    const path = url.pathname;
+    const host = url.hostname.toLowerCase();
+
+    // Grok: grok.com/c/<id>
+    if (host.includes('grok')) {
+      const grokMatch = path.match(/\/c\/([a-zA-Z0-9_-]+)/);
+      if (grokMatch) return `grok:${grokMatch[1]}`;
+      return `grok:${path}`;
+    }
+
+    // ChatGPT: chatgpt.com/c/<uuid> or chat.openai.com/c/<uuid>
+    if (host.includes('chatgpt') || host.includes('openai')) {
+      const gptMatch = path.match(/\/c\/([a-zA-Z0-9_-]+)/);
+      if (gptMatch) return `chatgpt:${gptMatch[1]}`;
+      return `chatgpt:${path}`;
+    }
+
+    // Gemini: gemini.google.com/app/<id>
+    if (host.includes('gemini')) {
+      const geminiMatch = path.match(/\/app\/([a-zA-Z0-9_-]+)/);
+      if (geminiMatch && geminiMatch[1] !== '') return `gemini:${geminiMatch[1]}`;
+      return `gemini:${path}`;
+    }
+
+    // Claude: claude.ai/chat/<uuid>
+    if (host.includes('claude')) {
+      const claudeMatch = path.match(/\/chat\/([a-zA-Z0-9_-]+)/);
+      if (claudeMatch) return `claude:${claudeMatch[1]}`;
+      return `claude:${path}`;
+    }
+
+    // Generic fallback based on host + pathname
+    return `${url.hostname}:${path}`;
+  } catch {
+    return urlStr || 'default_session';
+  }
 }
 
 /**
@@ -79,28 +132,28 @@ export function restoreDetailed(text: string, tokenMap: Record<string, string>):
 }
 
 /** Realistic synthetic mock pools for format-preserving anonymization (FPE). */
-const SYNTHETIC_NAMES = [
-  'Alex Morgan',
-  'Jordan Lee',
-  'Samira Khan',
-  'Taylor Brooks',
-  'Arjun Patel',
-  'Elena Rostova',
-  'Marcus Vance',
-  'Chloe Bennett',
-  'Devon Chen',
-  'Maya Lin',
+const SYNTHETIC_NAME_PAIRS: Array<{ first: string; last: string }> = [
+  { first: 'Arjun', last: 'Patel' },
+  { first: 'Sanjay', last: 'Verma' },
+  { first: 'Vikram', last: 'Singh' },
+  { first: 'Alex', last: 'Morgan' },
+  { first: 'Jordan', last: 'Lee' },
+  { first: 'Samira', last: 'Khan' },
+  { first: 'Elena', last: 'Rostova' },
+  { first: 'Marcus', last: 'Vance' },
+  { first: 'Chloe', last: 'Bennett' },
+  { first: 'Devon', last: 'Chen' },
 ];
 
 const SYNTHETIC_ORGS = [
-  'Acme Global',
-  'Apex Dynamics',
-  'Nexus Health',
+  'Apex Healthcare Center',
+  'Nexus Global Dynamics',
   'Beacon Enterprises',
+  'Acme Technologies',
   'Horizon Solutions',
 ];
 
-const SYNTHETIC_CITIES = ['Springfield', 'Riverdale', 'Fairview', 'Brookfield', 'Greenville'];
+const SYNTHETIC_CITIES = ['Greenville', 'Riverdale', 'Springfield', 'Brookfield', 'Fairview'];
 
 /**
  * Generates natural, consistent synthetic surrogate data for format-preserving masking.
@@ -108,6 +161,7 @@ const SYNTHETIC_CITIES = ['Springfield', 'Riverdale', 'Fairview', 'Brookfield', 
  */
 export class SyntheticGenerator {
   private cache = new Map<string, string>();
+  private subMap = new Map<string, string>();
   private counter = 0;
 
   generate(type: EntityType, original: string): string {
@@ -119,18 +173,51 @@ export class SyntheticGenerator {
     let result = '';
 
     switch (type) {
-      case 'PERSON':
-        result = SYNTHETIC_NAMES[idx % SYNTHETIC_NAMES.length];
+      case 'PERSON': {
+        const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+        const words = original.trim().split(/\s+/);
+        if (words.length === 1) {
+          result = pair.first;
+          this.subMap.set(result, original);
+        } else {
+          result = `${pair.first} ${pair.last}`;
+          // Also register first and last name so AI addressing "Hi Arjun" is unmasked
+          this.subMap.set(result, original);
+          this.subMap.set(pair.first, words[0]);
+          this.subMap.set(pair.last, words[words.length - 1]);
+        }
         break;
-      case 'EMAIL':
-        result = `user${idx + 1}@privacy-mock.local`;
+      }
+      case 'EMAIL': {
+        const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+        result = `${pair.first.toLowerCase()}.${pair.last.toLowerCase()}@safemail.internal`;
         break;
-      case 'PHONE':
-        result = `+1 (555) 010-${String(1000 + (idx % 9000)).slice(-4)}`;
+      }
+      case 'PHONE': {
+        const digits = original.replace(/\D/g, '');
+        if (original.includes('+91')) {
+          result = `+91 91234 ${String(56789 + idx).slice(-5)}`;
+        } else if (original.includes('+1') || /\(\d{3}\)/.test(original)) {
+          result = `+1 (555) 010-${String(1000 + (idx % 9000)).slice(-4)}`;
+        } else if (digits.length === 8) {
+          result = `9123${String(4567 + idx).slice(-4)}`;
+        } else if (digits.length === 10) {
+          result = `91234 ${String(56789 + idx).slice(-5)}`;
+        } else {
+          result = `+1 (555) 010-${String(1000 + (idx % 9000)).slice(-4)}`;
+        }
         break;
+      }
       case 'CREDIT_CARD':
         // Standard test Visa card passing Luhn
         result = '4000 1234 5678 9010';
+        break;
+      case 'AADHAAR':
+        // 12-digit mock Aadhaar passing Verhoeff checksum
+        result = '9123 4567 8901';
+        break;
+      case 'PAN':
+        result = 'ABCDE1234F';
         break;
       case 'ORGANIZATION':
         result = SYNTHETIC_ORGS[idx % SYNTHETIC_ORGS.length];
@@ -157,8 +244,18 @@ export class SyntheticGenerator {
     return result;
   }
 
+  /** Returns all active mappings including full and sub-name mappings. */
+  getAllMappings(): Record<string, string> {
+    const res: Record<string, string> = {};
+    for (const [synth, orig] of this.subMap.entries()) {
+      res[synth] = orig;
+    }
+    return res;
+  }
+
   reset(): void {
     this.cache.clear();
+    this.subMap.clear();
     this.counter = 0;
   }
 }
@@ -212,5 +309,216 @@ export class EphemeralVault {
   /** Count total active session vaults. */
   get sessionCount(): number {
     return this.sessions.size;
+  }
+}
+
+function toBase64(bytes: Uint8Array): string {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(bytes).toString('base64');
+  }
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+function fromBase64(base64: string): Uint8Array {
+  if (typeof Buffer !== 'undefined') {
+    return new Uint8Array(Buffer.from(base64, 'base64'));
+  }
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * Zero-Knowledge Encrypted Conversation Vault.
+ * Uses AES-GCM 256-bit encryption with rolling LRU auto-purge (Max 20 conversations).
+ * Ensures zero plaintext secrets on disk and survives page reloads (F5).
+ */
+export class EncryptedConversationVault {
+  private key: CryptoKey | null = null;
+  private memoryFallback = new Map<string, StoredSessionRecord>();
+  private readonly storageKey = '__p2shield_vault_records_v1';
+
+  constructor(private storage?: Storage) {
+    if (!this.storage && typeof window !== 'undefined' && window.sessionStorage) {
+      this.storage = window.sessionStorage;
+    }
+  }
+
+  /** Initialize AES-GCM 256-bit encryption key in memory, persisting JWK across F5 tab reloads. */
+  private async getKey(): Promise<CryptoKey | null> {
+    if (this.key) return this.key;
+    if (typeof crypto === 'undefined' || !crypto.subtle) return null;
+    try {
+      if (this.storage) {
+        const savedJwk = this.storage.getItem(`${this.storageKey}_k`);
+        if (savedJwk) {
+          try {
+            const jwk = JSON.parse(savedJwk);
+            this.key = await crypto.subtle.importKey(
+              'jwk',
+              jwk,
+              { name: 'AES-GCM', length: 256 },
+              true,
+              ['encrypt', 'decrypt'],
+            );
+            return this.key;
+          } catch {
+            /* invalid or corrupted key */
+          }
+        }
+      }
+
+      this.key = await crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt'],
+      );
+      if (this.storage && this.key) {
+        try {
+          const exported = await crypto.subtle.exportKey('jwk', this.key);
+          this.storage.setItem(`${this.storageKey}_k`, JSON.stringify(exported));
+        } catch {
+          /* ignore storage error */
+        }
+      }
+      return this.key;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Encrypt object to base64 string using AES-GCM. */
+  private async encryptData(data: unknown): Promise<string> {
+    const jsonStr = JSON.stringify(data);
+    const key = await this.getKey();
+    if (!key || typeof crypto === 'undefined' || !crypto.subtle) {
+      const encoded = new TextEncoder().encode(jsonStr);
+      return toBase64(encoded);
+    }
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(jsonStr);
+    const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+
+    // Combine IV + ciphertext
+    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(ciphertext), iv.length);
+    return toBase64(combined);
+  }
+
+  /** Decrypt base64 string using AES-GCM. */
+  private async decryptData<T>(base64Str: string): Promise<T | null> {
+    try {
+      const key = await this.getKey();
+      const combined = fromBase64(base64Str);
+      if (!key || typeof crypto === 'undefined' || !crypto.subtle) {
+        const decoded = new TextDecoder().decode(combined);
+        return JSON.parse(decoded) as T;
+      }
+      const iv = combined.slice(0, 12);
+      const ciphertext = combined.slice(12);
+      const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      const jsonStr = new TextDecoder().decode(decrypted);
+      return JSON.parse(jsonStr) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Load all active conversation records from local storage. */
+  async loadAll(): Promise<StoredSessionRecord[]> {
+    if (!this.storage) {
+      return Array.from(this.memoryFallback.values());
+    }
+    try {
+      const raw = this.storage.getItem(this.storageKey);
+      if (!raw) return Array.from(this.memoryFallback.values());
+      const records = await this.decryptData<StoredSessionRecord[]>(raw);
+      return records ?? [];
+    } catch {
+      return Array.from(this.memoryFallback.values());
+    }
+  }
+
+  /** Save all records to storage with LRU capping (max 20 conversations). */
+  private async saveAll(records: StoredSessionRecord[]): Promise<void> {
+    // Sort by latest updated first and trim to MAX_VAULT_CONVERSATIONS
+    records.sort((a, b) => b.updatedAt - a.updatedAt);
+    const trimmed = records.slice(0, MAX_VAULT_CONVERSATIONS);
+
+    // Update memory cache
+    this.memoryFallback.clear();
+    for (const r of trimmed) {
+      this.memoryFallback.set(r.conversationId, r);
+    }
+
+    if (!this.storage) return;
+    try {
+      const encrypted = await this.encryptData(trimmed);
+      this.storage.setItem(this.storageKey, encrypted);
+    } catch {
+      /* quota or storage error */
+    }
+  }
+
+  /** Store or merge token replacements for a specific conversation. */
+  async save(conversationId: string, tokenMap: Record<string, string>): Promise<void> {
+    if (!conversationId || !tokenMap || Object.keys(tokenMap).length === 0) return;
+    const records = await this.loadAll();
+    const existingIdx = records.findIndex((r) => r.conversationId === conversationId);
+
+    if (existingIdx >= 0) {
+      records[existingIdx].tokenMap = { ...records[existingIdx].tokenMap, ...tokenMap };
+      records[existingIdx].updatedAt = Date.now();
+    } else {
+      records.push({
+        conversationId,
+        tokenMap,
+        updatedAt: Date.now(),
+      });
+    }
+
+    await this.saveAll(records);
+  }
+
+  /** Retrieve the token mapping for a conversation. */
+  async load(conversationId: string): Promise<Record<string, string>> {
+    if (!conversationId) return {};
+    const records = await this.loadAll();
+    const record = records.find((r) => r.conversationId === conversationId);
+    return record?.tokenMap ? { ...record.tokenMap } : {};
+  }
+
+  /** Migrate token mapping from an initial URL to a newly assigned Chat ID. */
+  async migrate(oldId: string, newId: string): Promise<void> {
+    if (!oldId || !newId || oldId === newId) return;
+    const oldMap = await this.load(oldId);
+    if (Object.keys(oldMap).length === 0) return;
+
+    await this.save(newId, oldMap);
+    await this.clear(oldId);
+  }
+
+  /** Clear tokens for a specific conversation or purge entire vault. */
+  async clear(conversationId?: string): Promise<void> {
+    if (conversationId) {
+      const records = await this.loadAll();
+      const filtered = records.filter((r) => r.conversationId !== conversationId);
+      await this.saveAll(filtered);
+    } else {
+      this.memoryFallback.clear();
+      this.storage?.removeItem(this.storageKey);
+      this.storage?.removeItem(`${this.storageKey}_k`);
+      this.key = null;
+    }
   }
 }

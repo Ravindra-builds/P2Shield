@@ -2485,29 +2485,30 @@
   }
 
   // src/core/vault.ts
-  var SYNTHETIC_NAMES = [
-    "Alex Morgan",
-    "Jordan Lee",
-    "Samira Khan",
-    "Taylor Brooks",
-    "Arjun Patel",
-    "Elena Rostova",
-    "Marcus Vance",
-    "Chloe Bennett",
-    "Devon Chen",
-    "Maya Lin"
+  var SYNTHETIC_NAME_PAIRS = [
+    { first: "Arjun", last: "Patel" },
+    { first: "Sanjay", last: "Verma" },
+    { first: "Vikram", last: "Singh" },
+    { first: "Alex", last: "Morgan" },
+    { first: "Jordan", last: "Lee" },
+    { first: "Samira", last: "Khan" },
+    { first: "Elena", last: "Rostova" },
+    { first: "Marcus", last: "Vance" },
+    { first: "Chloe", last: "Bennett" },
+    { first: "Devon", last: "Chen" }
   ];
   var SYNTHETIC_ORGS = [
-    "Acme Global",
-    "Apex Dynamics",
-    "Nexus Health",
+    "Apex Healthcare Center",
+    "Nexus Global Dynamics",
     "Beacon Enterprises",
+    "Acme Technologies",
     "Horizon Solutions"
   ];
-  var SYNTHETIC_CITIES = ["Springfield", "Riverdale", "Fairview", "Brookfield", "Greenville"];
+  var SYNTHETIC_CITIES = ["Greenville", "Riverdale", "Springfield", "Brookfield", "Fairview"];
   var SyntheticGenerator = class {
     constructor() {
       __publicField(this, "cache", /* @__PURE__ */ new Map());
+      __publicField(this, "subMap", /* @__PURE__ */ new Map());
       __publicField(this, "counter", 0);
     }
     generate(type, original) {
@@ -2517,17 +2518,48 @@
       const idx = this.counter++;
       let result = "";
       switch (type) {
-        case "PERSON":
-          result = SYNTHETIC_NAMES[idx % SYNTHETIC_NAMES.length];
+        case "PERSON": {
+          const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+          const words = original.trim().split(/\s+/);
+          if (words.length === 1) {
+            result = pair.first;
+            this.subMap.set(result, original);
+          } else {
+            result = `${pair.first} ${pair.last}`;
+            this.subMap.set(result, original);
+            this.subMap.set(pair.first, words[0]);
+            this.subMap.set(pair.last, words[words.length - 1]);
+          }
           break;
-        case "EMAIL":
-          result = `user${idx + 1}@privacy-mock.local`;
+        }
+        case "EMAIL": {
+          const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+          result = `${pair.first.toLowerCase()}.${pair.last.toLowerCase()}@safemail.internal`;
           break;
-        case "PHONE":
-          result = `+1 (555) 010-${String(1e3 + idx % 9e3).slice(-4)}`;
+        }
+        case "PHONE": {
+          const digits = original.replace(/\D/g, "");
+          if (original.includes("+91")) {
+            result = `+91 91234 ${String(56789 + idx).slice(-5)}`;
+          } else if (original.includes("+1") || /\(\d{3}\)/.test(original)) {
+            result = `+1 (555) 010-${String(1e3 + idx % 9e3).slice(-4)}`;
+          } else if (digits.length === 8) {
+            result = `9123${String(4567 + idx).slice(-4)}`;
+          } else if (digits.length === 10) {
+            result = `91234 ${String(56789 + idx).slice(-5)}`;
+          } else {
+            result = `+1 (555) 010-${String(1e3 + idx % 9e3).slice(-4)}`;
+          }
           break;
+        }
         case "CREDIT_CARD":
           result = "4000 1234 5678 9010";
+          break;
+        case "AADHAAR":
+          result = "9123 4567 8901";
+          break;
+        case "PAN":
+          result = "ABCDE1234F";
           break;
         case "ORGANIZATION":
           result = SYNTHETIC_ORGS[idx % SYNTHETIC_ORGS.length];
@@ -2551,8 +2583,17 @@
       this.cache.set(key, result);
       return result;
     }
+    /** Returns all active mappings including full and sub-name mappings. */
+    getAllMappings() {
+      const res = {};
+      for (const [synth, orig] of this.subMap.entries()) {
+        res[synth] = orig;
+      }
+      return res;
+    }
     reset() {
       this.cache.clear();
+      this.subMap.clear();
       this.counter = 0;
     }
   };
@@ -2789,7 +2830,7 @@
       levelAfter: riskLevel(riskAfter),
       mode,
       profileId: profile.id,
-      tokenMap: tk.map
+      tokenMap: { ...syn.getAllMappings(), ...tk.map }
     };
   }
 
