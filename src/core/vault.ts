@@ -176,21 +176,30 @@ export class SyntheticGenerator {
       case 'PERSON': {
         const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
         const words = original.trim().split(/\s+/);
+        const isLower = original === original.toLowerCase();
         if (words.length === 1) {
-          result = pair.first;
+          result = isLower ? pair.first.toLowerCase() : pair.first;
           this.subMap.set(result, original);
+          this.subMap.set(pair.first, original);
+          this.subMap.set(pair.first.toLowerCase(), original);
         } else {
-          result = `${pair.first} ${pair.last}`;
-          // Also register first and last name so AI addressing "Hi Arjun" is unmasked
+          result = isLower
+            ? `${pair.first.toLowerCase()} ${pair.last.toLowerCase()}`
+            : `${pair.first} ${pair.last}`;
           this.subMap.set(result, original);
+          this.subMap.set(`${pair.first} ${pair.last}`, original);
           this.subMap.set(pair.first, words[0]);
+          this.subMap.set(pair.first.toLowerCase(), words[0]);
           this.subMap.set(pair.last, words[words.length - 1]);
+          this.subMap.set(pair.last.toLowerCase(), words[words.length - 1]);
         }
         break;
       }
       case 'EMAIL': {
         const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
-        result = `${pair.first.toLowerCase()}.${pair.last.toLowerCase()}@safemail.internal`;
+        const domain = original.includes('@') ? original.slice(original.indexOf('@') + 1) : 'gmail.com';
+        result = `${pair.first.toLowerCase()}.${pair.last.toLowerCase()}@${domain}`;
+        this.subMap.set(result, original);
         break;
       }
       case 'PHONE': {
@@ -199,44 +208,76 @@ export class SyntheticGenerator {
           result = `+91 91234 ${String(56789 + idx).slice(-5)}`;
         } else if (original.includes('+1') || /\(\d{3}\)/.test(original)) {
           result = `+1 (555) 010-${String(1000 + (idx % 9000)).slice(-4)}`;
+        } else if (digits.length === 10) {
+          result = original.includes(' ') || original.includes('-')
+            ? `91234 ${String(56789 + idx).slice(-5)}`
+            : `91234${String(56789 + idx).slice(-5)}`;
         } else if (digits.length === 8) {
           result = `9123${String(4567 + idx).slice(-4)}`;
-        } else if (digits.length === 10) {
-          result = `91234 ${String(56789 + idx).slice(-5)}`;
         } else {
           result = `+1 (555) 010-${String(1000 + (idx % 9000)).slice(-4)}`;
         }
+        this.subMap.set(result, original);
+        break;
+      }
+      case 'MEDICAL': {
+        const lower = original.toLowerCase();
+        if (/doctor|specialist|physician|surgeon|consultant|oncologist|cardiologist/i.test(lower)) {
+          result = 'general physician';
+        } else if (/fever|cough|cold|infection|allergy|flu/i.test(lower)) {
+          result = 'mild seasonal allergy';
+        } else if (/problem|issue|disease|disorder|failure|pain|condition|damage|attack/i.test(lower)) {
+          result = 'general health issue';
+        } else if (/paracetamol|metformin|aspirin|insulin|tablet|medicine|medication/i.test(lower)) {
+          result = 'multivitamin supplement';
+        } else {
+          result = 'routine checkup consultation';
+        }
+        this.subMap.set(result, original);
+        break;
+      }
+      case 'UPI_ID': {
+        const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+        const handle = original.includes('@') ? original.slice(original.indexOf('@')) : '@okaxis';
+        result = `${pair.first.toLowerCase()}${10 + idx}${handle}`;
+        this.subMap.set(result, original);
         break;
       }
       case 'CREDIT_CARD':
-        // Standard test Visa card passing Luhn
         result = '4000 1234 5678 9010';
+        this.subMap.set(result, original);
         break;
       case 'AADHAAR':
-        // 12-digit mock Aadhaar passing Verhoeff checksum
         result = '9123 4567 8901';
+        this.subMap.set(result, original);
         break;
       case 'PAN':
         result = 'ABCDE1234F';
+        this.subMap.set(result, original);
         break;
       case 'ORGANIZATION':
         result = SYNTHETIC_ORGS[idx % SYNTHETIC_ORGS.length];
+        this.subMap.set(result, original);
         break;
       case 'LOCATION':
         result = SYNTHETIC_CITIES[idx % SYNTHETIC_CITIES.length];
+        this.subMap.set(result, original);
         break;
       case 'IP_ADDRESS':
-        // RFC 5737 TEST-NET-1 documentation IP range
         result = `192.0.2.${(idx % 250) + 1}`;
+        this.subMap.set(result, original);
         break;
       case 'DATE_OF_BIRTH':
         result = '1990-01-01';
+        this.subMap.set(result, original);
         break;
       case 'AGE':
         result = '30';
+        this.subMap.set(result, original);
         break;
       default:
         result = `[SYNTHETIC_${type}_${idx + 1}]`;
+        this.subMap.set(result, original);
         break;
     }
 

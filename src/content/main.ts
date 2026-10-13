@@ -4,6 +4,7 @@
 
 import { analyze, evaluate, quickScan } from '../core/engine';
 import { EncryptedConversationVault, EphemeralVault, extractConversationId, restore } from '../core/vault';
+import { BubblePillManager } from './bubble-pill';
 import type { AiEntity, AnalysisResult, Detection, Profile } from '../core/types';
 import type { Override } from '../core/sanitize';
 import {
@@ -63,6 +64,7 @@ interface Session {
 
 const sessionVault = new EphemeralVault();
 const encryptedVault = new EncryptedConversationVault();
+const bubblePills = new BubblePillManager();
 let unmaskObserver: MutationObserver | null = null;
 
 /**
@@ -108,6 +110,12 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
     if (val) {
       const restored = restore(val, map);
       if (restored !== val) {
+        const assistantTurn = parent?.closest<HTMLElement>(
+          '[data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user)',
+        );
+        if (assistantTurn) {
+          bubblePills.recordAssistantTurn(assistantTurn, map);
+        }
         current.nodeValue = restored;
       }
     }
@@ -121,6 +129,9 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
       }
     }
   }
+
+  // Attach interactive dual-view pills to bubbles
+  bubblePills.attachPills(map);
 }
 
 function enableResponseUnmasking(currentEditor?: HTMLElement | null): void {
@@ -192,6 +203,20 @@ async function start(): Promise<void> {
     },
     onUndo: () => void undo(),
     onToggle: (id, protectIt) => void toggle(id, protectIt),
+    onToggleView: () => {
+      if (!session) return;
+      const editor = liveEditor(session.editor);
+      if (!editor) return;
+      const currentText = getText(editor);
+      const isViewingSafe = normalizeForCompare(currentText) === normalizeForCompare(session.lastSafe);
+      const targetText = isViewingSafe ? session.original : session.lastSafe;
+      void write(editor, targetText).then((ok) => {
+        if (ok) {
+          repositionAfterEdit();
+          chipFor(session!, isViewingSafe ? 'original' : 'safe');
+        }
+      });
+    },
   });
 
   const enabled = () => !isSiteDisabled(settings, hostname);
@@ -403,19 +428,23 @@ async function start(): Promise<void> {
   /** How long a click waits for the model before protecting with the rules and refining afterwards. */
   const SMART_GRACE_MS = 700;
 
-  function chipFor(s: Session): void {
+  function chipFor(s: Session, currentView: 'safe' | 'original' = 'safe'): void {
     const applied = s.result.findings.filter((f) => f.applied).length;
     const subParts = [`${s.mode === 'smart' ? 'Smart' : 'Basic'} mode`, `${profile.name} profile`];
     if (s.smartNote) subParts.push(s.smartNote);
     ui.setResult(s.result, profile.name);
     ui.showChip(
       {
-        message: `Protected ${applied} item${applied === 1 ? '' : 's'} · Risk ${s.result.riskBefore} → ${s.result.riskAfter} (${s.result.levelAfter})`,
+        message:
+          currentView === 'safe'
+            ? `Protected ${applied} item${applied === 1 ? '' : 's'} · Risk ${s.result.riskBefore} → ${s.result.riskAfter} (${s.result.levelAfter})`
+            : `Viewing Original (Private) · ${applied} sensitive item${applied === 1 ? '' : 's'} · Risk ${s.result.riskBefore} (${s.result.levelBefore})`,
         sub: subParts.join(' · '),
         undo: true,
         details: true,
+        viewState: currentView,
       },
-      30000,
+      6000,
     );
   }
 
@@ -534,6 +563,7 @@ async function start(): Promise<void> {
         sessionVault.register(location.href, result.tokenMap);
         sessionVault.register(convId, result.tokenMap);
         void encryptedVault.save(convId, result.tokenMap);
+        bubblePills.recordPrompt(text, result.safeText, result.tokenMap);
         enableResponseUnmasking(editor);
       }
       if (ok) {
@@ -603,6 +633,7 @@ async function start(): Promise<void> {
       sessionVault.register(location.href, result.tokenMap);
       sessionVault.register(convId, result.tokenMap);
       void encryptedVault.save(convId, result.tokenMap);
+      bubblePills.recordPrompt(s.original, result.safeText, result.tokenMap);
       enableResponseUnmasking(s.editor);
     }
     if (after) chipFor(s);
@@ -699,19 +730,50 @@ async function start(): Promise<void> {
   function onInput(e: Event): void {
     if (!current) return;
     const el = resolveEditable(e.composedPath()[0] ?? e.target);
-    if (el === current) scheduleScan();
+    if (el === current) {
+      if (!hasText(current)) {
+        ui.hideChip();
+        ui.closePanel();
+        ui.setBadge(0, null);
+      }
+      scheduleScan();
+    }
+  }
+
+  function onKeyDown(e: KeyboardEvent): void {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      ui.hideChip();
+      ui.closePanel();
+    }
+  }
+
+  function onGlobalClick(e: MouseEvent): void {
+    const target = (e.composedPath()[0] ?? e.target) as HTMLElement | undefined;
+    if (
+      target &&
+      (target.closest(
+        'button[aria-label*="Send" i], button[data-testid*="send" i], button[aria-label*="Submit" i], button.send-button, [aria-label*="send message" i]',
+      ) ||
+        target.matches('button[aria-label*="Send" i], button[data-testid*="send" i]'))
+    ) {
+      ui.hideChip();
+      ui.closePanel();
+    }
   }
 
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('pointerdown', onPointerDown, true);
   document.addEventListener('input', onInput, true);
   document.addEventListener('keyup', onInput, true);
+  document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('click', onGlobalClick, true);
   document.addEventListener('paste', () => window.setTimeout(scheduleScan, 50), true);
   window.addEventListener('scroll', reposition, true);
   window.addEventListener('resize', reposition);
   window.setInterval(() => {
     reposition();
     void handleLocationChange();
+    bubblePills.attachPills(sessionVault.getActiveMap());
   }, 400);
 
   // ---- Encrypted Vault initial restoration (F5 reload) & SPA navigation ----

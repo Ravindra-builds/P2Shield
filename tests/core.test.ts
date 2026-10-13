@@ -144,7 +144,7 @@ describe('heuristics', () => {
   });
   it('person after title keeps the title', () => {
     const r = analyze('Please ask Dr. Anil Kumar about this').result;
-    expect(r.safeText).toContain('Dr. [PERSON_');
+    expect(r.safeText).toContain('Dr. Arjun Patel');
     expect(r.safeText).not.toContain('Anil');
   });
   it('does not flag ordinary capitalised words', () => {
@@ -208,7 +208,9 @@ describe('tokenization', () => {
     expect(r.tokenMap['[EMAIL_1]']).toBe('a@x.com');
   });
   it('a bare first name reuses the full-name token', () => {
-    const r = analyze('My name is Rahul Sharma. Rahul also likes tea.').result;
+    const r = analyze('My name is Rahul Sharma. Rahul also likes tea.', {
+      profile: getBuiltinProfile('enterprise'),
+    }).result;
     expect(r.safeText).toBe('My name is [PERSON_1]. [PERSON_1] also likes tea.');
   });
 });
@@ -249,10 +251,11 @@ describe('policy', () => {
     expect(r.safeText).toContain('20-30');
     expect(r.safeText).toContain('Jharkhand');
   });
-  it('personal masks the phone and tokenizes the name', () => {
+  it('personal synthesizes the name, phone, and medical details into natural dummy data', () => {
     const r = analyze(prompt, { profile: getBuiltinProfile('personal') }).result;
-    expect(r.safeText).toContain('98******10');
-    expect(r.safeText).toContain('[PERSON_1]');
+    expect(r.safeText).not.toContain('Rahul Sharma');
+    expect(r.safeText).not.toContain('9876543210');
+    expect(r.safeText).toContain('Arjun Patel');
   });
   it('finance generalizes amounts and masks accounts/cards', () => {
     const card = makeCard();
@@ -355,3 +358,35 @@ describe('sanitizer invariants', () => {
     expect(analyze(big).result.safeText.length).toBeGreaterThan(0);
   });
 });
+
+describe('real-world conversational prompts with lowercase names and medical details', () => {
+  it('detects and protects doctor name, specialist, condition, and email', () => {
+    const text =
+      'my doctor name is - rahul prakash and he is the liver doctor i have liver problem and his email is - rahul.prakash@gmail.com';
+    const { result, detections } = analyze(text);
+
+    expect(detections.some((d) => d.type === 'PERSON' && d.text === 'rahul prakash')).toBe(true);
+    expect(detections.some((d) => d.type === 'MEDICAL' && d.text.toLowerCase().includes('liver doctor'))).toBe(true);
+    expect(detections.some((d) => d.type === 'MEDICAL' && d.text.toLowerCase().includes('liver problem'))).toBe(true);
+    expect(detections.some((d) => d.type === 'EMAIL' && d.text.includes('rahul.prakash@gmail.com'))).toBe(true);
+
+    expect(result.safeText).not.toContain('rahul prakash');
+    expect(result.safeText).not.toContain('rahul.prakash@gmail.com');
+    expect(result.safeText).not.toContain('liver problem');
+  });
+
+  it('detects and protects greeting with lowercase first name, email, and 10-digit phone', () => {
+    const text =
+      'hi i am ravindra my mail is - ravindra12@gmail.com and phone number is - 7638362927 and keep these details';
+    const { result, detections } = analyze(text);
+
+    expect(detections.some((d) => d.type === 'PERSON' && d.text === 'ravindra')).toBe(true);
+    expect(detections.some((d) => d.type === 'EMAIL' && d.text === 'ravindra12@gmail.com')).toBe(true);
+    expect(detections.some((d) => d.type === 'PHONE' && d.text === '7638362927')).toBe(true);
+
+    expect(result.safeText).not.toContain('ravindra');
+    expect(result.safeText).not.toContain('ravindra12@gmail.com');
+    expect(result.safeText).not.toContain('7638362927');
+  });
+});
+

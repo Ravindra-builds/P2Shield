@@ -104,6 +104,48 @@ describe('SyntheticGenerator (Format-Preserving Anonymization)', () => {
     const restored = restore(result.safeText, result.tokenMap);
     expect(restored).toBe(prompt);
   });
+
+  it('generates natural format-preserving surrogates without placeholders for user cases', () => {
+    const text = 'hello my name is ravindra my phone is - 7638362927 and mail is ravindra12@gmail.com';
+    const { result } = analyze(text);
+
+    // No bracketed tokens
+    expect(result.safeText).not.toMatch(/\[PERSON_\d+\]/);
+    expect(result.safeText).not.toMatch(/\[SYNTHETIC_/);
+    expect(result.safeText).not.toContain('ravindra');
+    expect(result.safeText).not.toContain('7638362927');
+    expect(result.safeText).not.toContain('ravindra12@gmail.com');
+
+    // Realistic natural surrogate structure
+    expect(result.safeText).toContain('arjun');
+    expect(result.safeText).toContain('91234');
+    expect(result.safeText).toContain('@gmail.com');
+
+    // Restores back to the original text
+    const restored = restore(result.safeText, result.tokenMap);
+    expect(restored).toBe(text);
+  });
+
+  it('generates natural surrogates for medical condition and doctor and restores them', () => {
+    const text =
+      'my doctor name is - rahul prakash and he is the liver doctor i have liver problem and his email is - rahul.prakash@gmail.com';
+    const { result } = analyze(text);
+
+    expect(result.safeText).not.toMatch(/\[PERSON_\d+\]/);
+    expect(result.safeText).not.toMatch(/\[MEDICAL_\d+\]/);
+    expect(result.safeText).not.toContain('rahul prakash');
+    expect(result.safeText).not.toContain('liver doctor');
+    expect(result.safeText).not.toContain('liver problem');
+    expect(result.safeText).not.toContain('rahul.prakash@gmail.com');
+
+    // Natural dummy data was inserted
+    expect(result.safeText).toContain('general physician');
+    expect(result.safeText).toContain('general health issue');
+
+    // Restores back to the original text
+    const restored = restore(result.safeText, result.tokenMap);
+    expect(restored).toBe(text);
+  });
 });
 
 describe('EphemeralVault', () => {
