@@ -164,12 +164,37 @@ function normalize(s: string): string {
   return s.trim().replace(/\s+/g, ' ');
 }
 
+export const USER_BUBBLE_SELECTOR = [
+  '[data-message-author-role="user"]',
+  '[data-role="user"]',
+  'user-query',
+  'user-query-container',
+  '.user-query-container',
+  '.query-text',
+  '.user-turn',
+  'article:not(:has([data-message-author-role="assistant"]))',
+  '[data-testid*="user-message"]',
+  '[data-testid*="user-turn"]',
+  '[data-testid="user-message"]',
+  '.font-user-message',
+  '.user-message',
+  '.user-bubble',
+  '.user-prompt',
+  'div[class*="ThreadQuery"]',
+  'div[class*="bg-offsetPlus"]',
+  '[data-testid="query"]',
+  '[data-testid*="thread-title"]',
+  'div:has(> button[aria-label*="Edit" i]):not(:has(div[class*="prose"]))',
+  'div:has(button[aria-label*="Edit query" i])',
+].join(', ');
+
 export class BubblePillManager {
   private prompts: PromptRecord[] = [];
   private assistantTurns = new Map<HTMLElement, Record<string, string>>();
   private assistantViews = new Map<HTMLElement, 'restored' | 'raw'>();
   private userViews = new Map<HTMLElement, 'safe' | 'original'>();
   private userRecords = new Map<HTMLElement, PromptRecord>();
+  private activeMap: Record<string, string> = {};
 
   /** Record prompt when sanitized. */
   recordPrompt(original: string, safe: string, tokenMap: Record<string, string>): void {
@@ -192,22 +217,48 @@ export class BubblePillManager {
 
   /** Attach dual-view native icon buttons to user turns and assistant response turns. */
   attachPills(activeMap: Record<string, string>): void {
-    this.attachUserActionButtons(activeMap);
+    if (activeMap && Object.keys(activeMap).length > 0) {
+      this.activeMap = { ...this.activeMap, ...activeMap };
+    }
+    this.attachUserActionButtons(this.activeMap);
     this.attachAssistantActionButtons();
   }
 
   /** Attach sleek icon button alongside user prompt actions. */
   private attachUserActionButtons(activeMap: Record<string, string>): void {
-    // Find top-level user turn containers across platforms (Gemini: <user-query>, ChatGPT: article / [data-message-author-role="user"])
+    // Find top-level user turn containers across platforms (Gemini: user-query-container / user-query, ChatGPT: article / user message, Perplexity: query container / h1)
     const rawTurns = document.querySelectorAll<HTMLElement>(
-      'user-query, article:has([data-message-author-role="user"]), [data-message-author-role="user"], [data-role="user"], .message-row.user, [data-testid*="user-message"]',
+      [
+        'user-query-container',
+        '.user-query-container',
+        'user-query',
+        'article:has(button[aria-label*="Edit" i])',
+        'article:not(:has([data-message-author-role="assistant"]))',
+        '[data-message-author-role="user"]',
+        '[data-role="user"]',
+        '.message-row.user',
+        '[data-testid*="user-message"]',
+        '[data-testid*="user-turn"]',
+        'div[class*="ThreadQuery"]',
+        'div[class*="bg-offsetPlus"]',
+        '[data-testid="query"]',
+        'div:has(button[aria-label*="Edit" i]):not(:has(div[class*="prose"])):not(:has([data-message-author-role="assistant"]))',
+        'div:has(> button[aria-label*="Edit" i])',
+      ].join(', '),
     );
 
     for (const raw of rawTurns) {
-      // Find the definitive top-level turn container
-      const turn = raw.closest<HTMLElement>('user-query, article, [data-message-author-role="user"]') || raw;
+      // Find the definitive top-level turn container:
+      // For Gemini: resolve to user-query-container (holds prompt + copy/edit buttons together)
+      // For ChatGPT: resolve to the user article
+      // For Perplexity: resolve to the query container
+      const turn =
+        raw.closest<HTMLElement>('user-query-container, .user-query-container') ||
+        raw.closest<HTMLElement>('article') ||
+        raw.closest<HTMLElement>('div:has(button[aria-label*="Edit" i]), user-query, div[class*="ThreadQuery"], div[class*="bg-offsetPlus"], [data-testid="query"]') ||
+        raw;
 
-      if (turn.querySelector('.p2shield-action-host') || turn.hasAttribute('data-p2shield-user-btn')) {
+      if (turn.querySelector('.p2shield-action-host.user-action') || turn.hasAttribute('data-p2shield-user-btn')) {
         continue;
       }
 
@@ -286,10 +337,7 @@ export class BubblePillManager {
         const dot = document.createElement('span');
         dot.className = 'dot';
 
-        const tipText =
-          view === 'safe'
-            ? 'P2Shield: Sent to AI (Protected) · Click to view original prompt'
-            : 'P2Shield: Viewing original private prompt · Click to view sent version';
+        const tipText = view === 'safe' ? 'Protected' : 'Original';
 
         btn.title = tipText;
         tooltip.textContent = tipText;
@@ -325,13 +373,29 @@ export class BubblePillManager {
 
   /** Attach sleek icon button alongside assistant response actions (Copy, Share, etc.). */
   private attachAssistantActionButtons(): void {
-    for (const [turn, tokenMap] of this.assistantTurns.entries()) {
-      if (turn.querySelector('.p2shield-action-host') || turn.hasAttribute('data-p2shield-assistant-btn')) {
+    for (const [rawTurn, tokenMap] of this.assistantTurns.entries()) {
+      if (!rawTurn.isConnected) continue;
+
+      // Prefer outer container (article for ChatGPT, model-response for Gemini, answer container for Perplexity)
+      const turn =
+        rawTurn.closest<HTMLElement>('article') ||
+        rawTurn.closest<HTMLElement>('model-response') ||
+        rawTurn.closest<HTMLElement>('div[class*="Answer" i], div[class*="answer" i], div[data-testid*="answer" i], div.prose, [data-testid*="assistant"]') ||
+        rawTurn;
+
+      if (
+        turn.querySelector('.p2shield-action-host.assistant-action') ||
+        turn.hasAttribute('data-p2shield-assistant-btn') ||
+        turn.matches(USER_BUBBLE_SELECTOR) ||
+        turn.closest(USER_BUBBLE_SELECTOR)
+      ) {
         continue;
       }
-      if (!tokenMap || Object.keys(tokenMap).length === 0) continue;
+      const combinedMap = { ...this.activeMap, ...tokenMap };
+      if (Object.keys(combinedMap).length === 0) continue;
 
       turn.setAttribute('data-p2shield-assistant-btn', 'true');
+      turn.setAttribute('data-p2shield-view', 'restored');
       this.assistantViews.set(turn, 'restored');
 
       const host = document.createElement('div');
@@ -357,10 +421,7 @@ export class BubblePillManager {
         const dot = document.createElement('span');
         dot.className = 'dot';
 
-        const tipText =
-          view === 'restored'
-            ? 'P2Shield: Restored with private details · Click to view raw AI response'
-            : 'P2Shield: Raw AI response with dummy data · Click to restore private details';
+        const tipText = view === 'restored' ? 'Restored' : 'Raw AI';
 
         btn.title = tipText;
         tooltip.textContent = tipText;
@@ -390,15 +451,24 @@ export class BubblePillManager {
     const currentView = this.assistantViews.get(turn) ?? 'restored';
     const nextView: 'restored' | 'raw' = currentView === 'restored' ? 'raw' : 'restored';
     this.assistantViews.set(turn, nextView);
+    turn.setAttribute('data-p2shield-view', nextView);
 
-    const tokenMap = this.assistantTurns.get(turn) ?? {};
+    const tokenMap = {
+      ...this.activeMap,
+      ...(this.assistantTurns.get(turn) ?? {}),
+    };
     if (Object.keys(tokenMap).length === 0) return nextView;
 
     if (nextView === 'raw') {
       // Reverse map: original private details -> surrogate dummy tokens
+      // Sort originals by descending length so "Ravindra Kumar" replaces before "Ravindra"
+      const entries = Object.entries(tokenMap)
+        .filter(([surrogate, original]) => Boolean(original && surrogate && original !== surrogate))
+        .sort((a, b) => b[1].length - a[1].length);
+
       const reverseMap: Record<string, string> = {};
-      for (const [surrogate, original] of Object.entries(tokenMap)) {
-        if (original && surrogate && original !== surrogate) {
+      for (const [surrogate, original] of entries) {
+        if (!reverseMap[original]) {
           reverseMap[original] = surrogate;
         }
       }
@@ -422,7 +492,8 @@ export class BubblePillManager {
           parent.tagName === 'P2SHIELD-HOST' ||
           parent.classList.contains('p2shield-action-host') ||
           parent.closest('.p2shield-action-host') ||
-          parent.closest('p2shield-host')
+          parent.closest('p2shield-host') ||
+          parent.closest(USER_BUBBLE_SELECTOR)
         ) {
           return NodeFilter.FILTER_REJECT;
         }
@@ -443,28 +514,36 @@ export class BubblePillManager {
   }
 
   /**
-   * Inserts the button into the native action bar (next to Copy / Edit) across Gemini, ChatGPT, Claude, Grok.
-   * If no action bar exists, appends cleanly in a dedicated full-width container below the turn.
+   * Inserts the button into the native action bar (next to Copy / Edit) across Gemini, ChatGPT, Claude, Grok, Perplexity.
+   * Keeps the button on the exact same row as the native action buttons.
    */
   private insertIntoActionBar(turn: HTMLElement, host: HTMLElement, role: 'user' | 'assistant'): void {
-    // 1. Try finding native copy or edit button to place right beside it
-    const copyOrEditBtn =
-      turn.querySelector<HTMLElement>(
-        'button[aria-label*="Copy" i], button[mattooltip*="Copy" i], button[data-test-id*="copy" i], button[aria-label*="Edit" i], button[mattooltip*="Edit" i]',
-      ) ||
-      turn.parentElement?.querySelector<HTMLElement>(
-        'button[aria-label*="Copy" i], button[mattooltip*="Copy" i], button[aria-label*="Edit" i]',
-      );
+    // 1. Try finding native copy or edit button to place right beside it (STRICTLY WITHIN TURN!)
+    const copyOrEditBtn = turn.querySelector<HTMLElement>(
+      'button[aria-label*="Copy" i], button[mattooltip*="Copy" i], button[data-test-id*="copy" i], button[data-test-id="copy-button"], button[data-testid*="copy" i], button[aria-label*="Edit" i], button[mattooltip*="Edit" i], button[data-testid*="edit" i]',
+    );
 
-    if (copyOrEditBtn && copyOrEditBtn.parentElement) {
-      const bar = copyOrEditBtn.parentElement;
-      bar.insertBefore(host, copyOrEditBtn.nextSibling);
-      return;
+    if (copyOrEditBtn) {
+      // Find the direct flex toolbar holding the buttons (Gemini actions-container, ChatGPT text-token-text-secondary, Perplexity flex)
+      const flexBar =
+        copyOrEditBtn.closest<HTMLElement>(
+          'response-actions, .actions-container, .action-container, div[class*="actions"], .user-query-container, div.text-token-text-secondary, div.items-end div.flex, div.items-start div.flex, div.flex.items-center, div.flex',
+        ) || copyOrEditBtn.parentElement;
+
+      if (flexBar) {
+        // If button is inside a tooltip wrapper span, insert next to the span so it's a direct sibling in the flex bar
+        const directChild =
+          copyOrEditBtn.parentElement && copyOrEditBtn.parentElement !== flexBar
+            ? copyOrEditBtn.parentElement
+            : copyOrEditBtn;
+        flexBar.insertBefore(host, directChild.nextSibling);
+        return;
+      }
     }
 
-    // 2. Try finding native action container
+    // 2. Try finding native action container within turn
     const actionBar = turn.querySelector<HTMLElement>(
-      'response-actions, .actions-container, .action-container, div[class*="actions"], .user-query-container, div.text-token-text-secondary, div.items-end div.flex, [class*="toolbar"]',
+      'response-actions, .actions-container, .action-container, div[class*="actions"], .user-query-container, div.text-token-text-secondary, div.items-end div.flex, div.items-start div.flex, div.flex.items-center.gap-x-1, div[class*="footer"], div[class*="bottom-bar"], [class*="toolbar"]',
     );
 
     if (actionBar) {
@@ -487,7 +566,7 @@ export class BubblePillManager {
 
   private findTextTarget(container: HTMLElement): HTMLElement | null {
     const textChild = container.querySelector<HTMLElement>(
-      '.whitespace-pre-wrap, .query-text, .user-turn, [data-message-author-role="user"] > div, .font-user-message',
+      '.whitespace-pre-wrap, .query-text, .user-turn, [data-message-author-role="user"] > div, .font-user-message, div.font-display, h1.font-display, .whitespace-pre-line',
     );
     if (textChild && !textChild.classList.contains('p2shield-action-host')) {
       return textChild;

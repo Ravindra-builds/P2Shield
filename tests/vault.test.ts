@@ -299,5 +299,64 @@ describe('EncryptedConversationVault', () => {
     expect(await vault.load('c2')).toEqual({});
     expect(storage.getItem('__p2shield_vault_records_v1')).toBeNull();
   });
+
+  describe('extractConversationId across LLM Platforms', () => {
+    it('extracts conversation ID from ChatGPT URLs', () => {
+      expect(extractConversationId('https://chatgpt.com/c/670a-1234-abcd')).toBe('chatgpt:670a-1234-abcd');
+      expect(extractConversationId('https://chat.openai.com/c/550e-8400')).toBe('chatgpt:550e-8400');
+    });
+
+    it('extracts conversation ID from Gemini URLs', () => {
+      expect(extractConversationId('https://gemini.google.com/app/c47a508f7b3a4361')).toBe('gemini:c47a508f7b3a4361');
+    });
+
+    it('extracts conversation ID from Claude URLs', () => {
+      expect(extractConversationId('https://claude.ai/chat/3ef56100-3622-4fe1')).toBe('claude:3ef56100-3622-4fe1');
+    });
+
+    it('extracts conversation ID from Grok URLs', () => {
+      expect(extractConversationId('https://grok.com/c/f6815bc2-9599')).toBe('grok:f6815bc2-9599');
+    });
+
+    it('extracts conversation ID from Perplexity URLs', () => {
+      expect(extractConversationId('https://www.perplexity.ai/search/what-is-quantum-computing-fA82b_d1')).toBe(
+        'perplexity:what-is-quantum-computing-fA82b_d1',
+      );
+    });
+
+    it('supports two-way bidirectional unmasking (Restored <-> Raw AI dummy data)', () => {
+      const originalPrompt =
+        'Hi, my name is Ravindra, my phone is 7648463939, and my email is ravindra123@gmail.com.';
+      const { result } = analyze(originalPrompt, { profile: getBuiltinProfile('personal') });
+
+      // Safe prompt sent to LLM contains natural synthetic mock data
+      expect(result.safeText).not.toContain('Ravindra');
+      expect(result.safeText).not.toContain('7648463939');
+      expect(result.safeText).not.toContain('ravindra123@gmail.com');
+
+      // AI responds using the synthetic details
+      const rawAiResponse = `Hello ${result.tokenMap ? Object.keys(result.tokenMap).find(k => result.tokenMap[k] === 'Ravindra') || 'Arjun' : 'Arjun'}, we received your phone and email.`;
+
+      // 1. Restore: Assistant text unmasks to user's real private details
+      const restored = restore(rawAiResponse, result.tokenMap);
+      expect(restored).toContain('Ravindra');
+
+      // 2. Toggle to Raw AI: Reverse map flips text back to synthetic dummy data
+      const entries = Object.entries(result.tokenMap)
+        .filter(([surrogate, original]) => Boolean(original && surrogate && original !== surrogate))
+        .sort((a, b) => b[1].length - a[1].length);
+
+      const reverseMap: Record<string, string> = {};
+      for (const [surrogate, original] of entries) {
+        if (!reverseMap[original]) {
+          reverseMap[original] = surrogate;
+        }
+      }
+
+      const backToRaw = restore(restored, reverseMap);
+      expect(backToRaw).not.toContain('Ravindra');
+      expect(backToRaw).toBe(rawAiResponse);
+    });
+  });
 });
 

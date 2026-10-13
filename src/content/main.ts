@@ -4,7 +4,7 @@
 
 import { analyze, evaluate, quickScan } from '../core/engine';
 import { EncryptedConversationVault, EphemeralVault, extractConversationId, restore } from '../core/vault';
-import { BubblePillManager } from './bubble-pill';
+import { BubblePillManager, USER_BUBBLE_SELECTOR } from './bubble-pill';
 import type { AiEntity, AnalysisResult, Detection, Profile } from '../core/types';
 import type { Override } from '../core/sanitize';
 import {
@@ -67,25 +67,6 @@ const encryptedVault = new EncryptedConversationVault();
 const bubblePills = new BubblePillManager();
 let unmaskObserver: MutationObserver | null = null;
 
-/**
- * Selectors for user message bubbles across major LLMs (ChatGPT, Gemini, Claude, Grok).
- * User sent bubbles must NEVER be unmasked so the user can see that secrets were shielded.
- */
-const USER_BUBBLE_SELECTOR = [
-  '[data-message-author-role="user"]',
-  '[data-role="user"]',
-  'user-query',
-  '.query-text',
-  '.user-turn',
-  '[data-testid*="user-message"]',
-  '[data-testid*="user-turn"]',
-  '[data-testid="user-message"]',
-  '.font-user-message',
-  '.user-message',
-  '.user-bubble',
-  '.user-prompt',
-].join(', ');
-
 function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEditor?: HTMLElement | null): void {
   if (!map || Object.keys(map).length === 0) return;
 
@@ -98,10 +79,13 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
       parent &&
       (parent.tagName === 'P2SHIELD-HOST' ||
         parent.closest('p2shield-host') ||
+        parent.classList.contains('p2shield-action-host') ||
+        parent.closest('.p2shield-action-host') ||
         parent.isContentEditable ||
         parent.tagName === 'TEXTAREA' ||
         parent.tagName === 'INPUT' ||
-        parent.closest(USER_BUBBLE_SELECTOR))
+        parent.closest(USER_BUBBLE_SELECTOR) ||
+        parent.closest('[data-p2shield-view="raw"]'))
     ) {
       continue;
     }
@@ -111,10 +95,13 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
       const restored = restore(val, map);
       if (restored !== val) {
         const assistantTurn = parent?.closest<HTMLElement>(
-          '[data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user)',
+          'article:has([data-message-author-role="assistant"]), [data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user), div[class*="prose"], div[class*="Answer" i], div[class*="answer" i], div[data-testid*="answer" i]',
         );
-        if (assistantTurn) {
-          bubblePills.recordAssistantTurn(assistantTurn, map);
+        const resolvedTurn =
+          assistantTurn?.closest<HTMLElement>('article, model-response, [data-testid*="conversation-turn"]') ||
+          assistantTurn;
+        if (resolvedTurn) {
+          bubblePills.recordAssistantTurn(resolvedTurn, map);
         }
         current.nodeValue = restored;
       }

@@ -61,6 +61,13 @@ export function extractConversationId(urlStr: string): string {
       return `claude:${path}`;
     }
 
+    // Perplexity: perplexity.ai/search/<uuid>
+    if (host.includes('perplexity')) {
+      const perpMatch = path.match(/\/search\/([a-zA-Z0-9_-]+)/);
+      if (perpMatch) return `perplexity:${perpMatch[1]}`;
+      return `perplexity:${path}`;
+    }
+
     // Generic fallback based on host + pathname
     return `${url.hostname}:${path}`;
   } catch {
