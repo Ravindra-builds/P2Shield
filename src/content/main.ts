@@ -70,23 +70,37 @@ let unmaskObserver: MutationObserver | null = null;
 function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEditor?: HTMLElement | null): void {
   if (!map || Object.keys(map).length === 0) return;
 
+  // Pre-attach pills to identify and tag user turns before text replacement
+  bubblePills.attachPills(map);
+
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   let current: Node | null;
   while ((current = walker.nextNode())) {
     if (currentEditor && currentEditor.contains(current)) continue;
     const parent = current.parentElement;
+    if (!parent) continue;
+
     if (
-      parent &&
-      (parent.tagName === 'P2SHIELD-HOST' ||
-        parent.closest('p2shield-host') ||
-        parent.classList.contains('p2shield-action-host') ||
-        parent.closest('.p2shield-action-host') ||
-        parent.isContentEditable ||
-        parent.tagName === 'TEXTAREA' ||
-        parent.tagName === 'INPUT' ||
-        parent.closest(USER_BUBBLE_SELECTOR) ||
-        parent.closest('[data-p2shield-view="raw"]'))
+      parent.tagName === 'P2SHIELD-HOST' ||
+      parent.closest('p2shield-host') ||
+      parent.classList.contains('p2shield-action-host') ||
+      parent.closest('.p2shield-action-host') ||
+      parent.isContentEditable ||
+      parent.tagName === 'TEXTAREA' ||
+      parent.tagName === 'INPUT' ||
+      parent.closest('[data-p2shield-view="raw"]')
     ) {
+      continue;
+    }
+
+    // Never unmask user sent bubbles unless inside an assistant response
+    const isAssistant = Boolean(
+      parent.closest(
+        'article:has([data-message-author-role="assistant"]), [data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user), .prose, [class*="prose"], .markdown, [class*="markdown"], [class*="Answer" i], [class*="answer" i], [data-testid*="answer" i], [data-testid*="response" i]',
+      ),
+    );
+
+    if (!isAssistant && (parent.closest(USER_BUBBLE_SELECTOR) || parent.closest('[data-p2shield-user-btn]'))) {
       continue;
     }
 
@@ -94,12 +108,18 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
     if (val) {
       const restored = restore(val, map);
       if (restored !== val) {
-        const assistantTurn = parent?.closest<HTMLElement>(
-          'article:has([data-message-author-role="assistant"]), [data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user), div[class*="prose"], div[class*="Answer" i], div[class*="answer" i], div[data-testid*="answer" i]',
-        );
+        const assistantTurn =
+          parent?.closest<HTMLElement>(
+            'article:has([data-message-author-role="assistant"]), [data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user), [class*="prose"], [class*="markdown"], [class*="Answer" i], [class*="answer" i], [data-testid*="answer" i], [data-testid*="response" i]',
+          ) ||
+          parent?.closest<HTMLElement>('div:has(button[aria-label*="Copy" i]):not(:has(button[aria-label*="Edit" i]))') ||
+          parent?.parentElement;
+
         const resolvedTurn =
-          assistantTurn?.closest<HTMLElement>('article, model-response, [data-testid*="conversation-turn"]') ||
-          assistantTurn;
+          assistantTurn?.closest<HTMLElement>(
+            'article, model-response, [data-testid*="conversation-turn"], div[class*="Answer" i], div[class*="answer" i], div[data-testid*="answer" i], div[class*="col-span-full"], div:has(> [class*="prose"]), div:has(button[aria-label*="Copy" i]):not(:has(button[aria-label*="Edit" i]))',
+          ) || assistantTurn;
+
         if (resolvedTurn) {
           bubblePills.recordAssistantTurn(resolvedTurn, map);
         }
@@ -117,7 +137,7 @@ function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEdito
     }
   }
 
-  // Attach interactive dual-view pills to bubbles
+  // Attach interactive dual-view pills to newly discovered assistant turns
   bubblePills.attachPills(map);
 }
 

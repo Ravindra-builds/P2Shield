@@ -357,6 +357,15 @@ describe('EncryptedConversationVault', () => {
       expect(backToRaw).not.toContain('Ravindra');
       expect(backToRaw).toBe(rawAiResponse);
     });
+
+    it('safely handles multi-word tokens containing @ without corrupting regex matching', () => {
+      const tokenMap = {
+        'Contact me at ravindra123@gmail.com for help?': 'Contact me at arjun.sharma@gmail.com for help?',
+      };
+      const text = 'Notice: Contact me at ravindra123@gmail.com for help? Thank you.';
+      const restored = restore(text, tokenMap);
+      expect(restored).toBe('Notice: Contact me at arjun.sharma@gmail.com for help? Thank you.');
+    });
   });
 });
 

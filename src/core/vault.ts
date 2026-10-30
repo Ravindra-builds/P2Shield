@@ -102,7 +102,7 @@ export function restoreDetailed(text: string, tokenMap: Record<string, string>):
     if (!original || !token) continue;
 
     let pattern: string;
-    if (token.includes('@')) {
+    if (token.includes('@') && !token.includes(' ') && token.length < 100) {
       // If token is an email mask (e.g. r***@GAMAIL.com), handle domain typos that AI might normalize
       const atIdx = token.lastIndexOf('@');
       const local = token.slice(0, atIdx).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
