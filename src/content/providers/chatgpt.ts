@@ -173,49 +173,85 @@ function normalize(s: string): string {
 }
 
 export class ChatGptProvider {
-  private userViews = new Map<HTMLElement, 'safe' | 'original'>();
+  private userViews = new Map<HTMLElement | HTMLButtonElement, 'safe' | 'original'>();
   private assistantViews = new Map<HTMLElement | HTMLButtonElement, 'restored' | 'raw'>();
-  private userRecords = new Map<HTMLElement, PromptRecord>();
+  private latestEffectiveMap: Record<string, string> = {};
+  private latestPrompts: PromptRecord[] = [];
 
   /** Entry point to attach or update ChatGPT user prompt and assistant response action buttons. */
   attachPills(prompts: PromptRecord[], activeMap: Record<string, string>): void {
-    // Combine activeMap with any tokens from stored prompts so tokens are never lost across turns
-    const effectiveMap: Record<string, string> = { ...activeMap };
+    this.latestPrompts = prompts;
+    this.latestEffectiveMap = { ...this.latestEffectiveMap, ...activeMap };
     for (const p of prompts) {
       if (p.tokenMap) {
-        Object.assign(effectiveMap, p.tokenMap);
+        Object.assign(this.latestEffectiveMap, p.tokenMap);
       }
     }
+    const effectiveMap = { ...this.latestEffectiveMap };
 
-    this.attachUserActionButtons(prompts, effectiveMap);
-    this.attachAssistantActionButtons(prompts, effectiveMap);
+    this.attachUserTurns(prompts, effectiveMap);
+    this.attachAssistantTurns(effectiveMap);
   }
 
-  /** Attach sleek icon button alongside user prompt actions in ChatGPT. */
-  private attachUserActionButtons(prompts: PromptRecord[], activeMap: Record<string, string>): void {
-    // In ChatGPT, user messages are inside <article> with [data-message-author-role="user"]
-    const rawTurns = document.querySelectorAll<HTMLElement>(
-      'article:has([data-message-author-role="user"]), [data-message-author-role="user"]',
+  /** Retrieve the latest active token map across all prompt records and vault. */
+  private getLatestTokenMap(record?: PromptRecord): Record<string, string> {
+    const map: Record<string, string> = { ...this.latestEffectiveMap };
+    if (record?.tokenMap) {
+      Object.assign(map, record.tokenMap);
+    }
+    for (const p of this.latestPrompts) {
+      if (p.tokenMap) {
+        Object.assign(map, p.tokenMap);
+      }
+    }
+    return map;
+  }
+
+  private isIgnoredNavigation(el: HTMLElement): boolean {
+    return Boolean(
+      el.closest('nav, aside, [role="navigation"], [class*="sidebar" i], [class*="history" i], header'),
     );
+  }
 
-    for (const raw of rawTurns) {
-      // 1. Strictly ignore sidebars, history panels, navigation, and headers
-      if (raw.closest('nav, aside, [role="navigation"], [class*="sidebar" i], [class*="history" i], header')) {
-        continue;
-      }
+  /** Locate all user prompt turns in ChatGPT and attach Protected/Original toggle buttons. */
+  private attachUserTurns(prompts: PromptRecord[], activeMap: Record<string, string>): void {
+    const userTurns: HTMLElement[] = [];
 
-      // 2. Resolve to the top-level article container
-      const turn = raw.closest<HTMLElement>('article') || raw;
+    // 1. Find by author role
+    const roleEls = document.querySelectorAll<HTMLElement>(
+      '[data-message-author-role="user"], div.font-user-message',
+    );
+    for (const el of roleEls) {
+      if (this.isIgnoredNavigation(el)) continue;
+      const turn =
+        el.closest<HTMLElement>('article, [data-testid*="conversation-turn"], [data-testid*="turn"]') ||
+        el.parentElement ||
+        el;
+      if (!userTurns.includes(turn)) userTurns.push(turn);
+    }
 
-      if (
-        turn.querySelector('.p2shield-action-host.user-action') ||
-        turn.hasAttribute('data-p2shield-user-btn') ||
-        turn.closest('[data-p2shield-user-btn]')
-      ) {
-        continue;
-      }
+    // 2. Find by user edit button (Edit pencil button exists only on user prompts in ChatGPT)
+    const editBtns = document.querySelectorAll<HTMLElement>(
+      'button[aria-label*="Edit" i], button[data-testid*="edit" i]',
+    );
+    for (const btn of editBtns) {
+      if (this.isIgnoredNavigation(btn)) continue;
+      if (btn.closest('form')) continue;
+      const turn =
+        btn.closest<HTMLElement>('article, [data-testid*="conversation-turn"], [data-testid*="turn"]') ||
+        btn.parentElement?.parentElement;
+      if (turn && !userTurns.includes(turn)) userTurns.push(turn);
+    }
 
-      const text = turn.textContent || '';
+    // 3. Attach button to each discovered user turn
+    for (const turn of userTurns) {
+      if (turn.querySelector('.p2shield-action-host.user-action')) continue;
+
+      const textTarget =
+        turn.querySelector<HTMLElement>('.whitespace-pre-wrap, [data-message-author-role="user"], div.font-user-message') ||
+        turn;
+
+      const text = textTarget.textContent || turn.textContent || '';
       if (!text.trim()) continue;
 
       // Find matching prompt record
@@ -257,10 +293,7 @@ export class ChatGptProvider {
 
       if (!record) continue;
 
-      turn.setAttribute('data-p2shield-user-btn', 'true');
-      this.userRecords.set(turn, record);
-
-      const promptTokens = record.tokenMap ?? {};
+      const promptTokens = record.tokenMap ?? activeMap;
       let currentHasOrig = false;
       for (const [surrogate, original] of Object.entries(promptTokens)) {
         if (!surrogate || !original || surrogate === original) continue;
@@ -269,126 +302,169 @@ export class ChatGptProvider {
       if (record.original && text.includes(record.original)) currentHasOrig = true;
 
       const initialView: 'safe' | 'original' = currentHasOrig ? 'original' : 'safe';
-      this.userViews.set(turn, initialView);
-      turn.setAttribute('data-p2shield-user-view', initialView);
-
-      // Create isolated shadow host
-      const host = document.createElement('div');
-      host.className = 'p2shield-action-host user-action';
-
-      const shadow = host.attachShadow({ mode: 'open' });
-      const style = document.createElement('style');
-      style.textContent = CHATGPT_ACTION_BTN_CSS;
-      shadow.appendChild(style);
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `action-btn ${initialView}`;
-
-      const tooltip = document.createElement('span');
-      tooltip.className = 'tooltip';
-
-      const render = (view: 'safe' | 'original') => {
-        btn.className = `action-btn ${view}`;
-        btn.replaceChildren();
-
-        const icon = view === 'safe' ? shieldIcon() : eyeIcon();
-        const dot = document.createElement('span');
-        dot.className = 'dot';
-
-        const tipText = view === 'safe' ? 'Protected' : 'Original';
-
-        btn.title = tipText;
-        tooltip.textContent = tipText;
-
-        btn.append(icon, dot, tooltip);
-      };
-
-      render(initialView);
-
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const currentView = this.userViews.get(turn) ?? initialView;
-        const nextView: 'safe' | 'original' = currentView === 'safe' ? 'original' : 'safe';
-        this.userViews.set(turn, nextView);
-        turn.setAttribute('data-p2shield-user-view', nextView);
-
-        const tokenMap = { ...activeMap, ...(record!.tokenMap ?? {}) };
-
-        if (nextView === 'safe') {
-          // Switch to safe view: replace real original data -> synthetic surrogates
-          const reverseMap = this.buildReverseMap(tokenMap);
-          this.replaceTextInTurn(turn, reverseMap);
-        } else {
-          // Switch to original view: replace synthetic surrogates -> real original data
-          this.replaceTextInTurn(turn, tokenMap);
-        }
-
-        render(nextView);
-      });
-
-      shadow.appendChild(btn);
-
-      // Insert cleanly into ChatGPT native action bar beside Copy
-      this.insertIntoChatGPTActionBar(turn, host, 'user');
+      this.attachUserButtonToTurn(turn, textTarget, initialView, record, activeMap);
     }
   }
 
-  /** Attach sleek icon button alongside assistant response actions (Copy, Read aloud, etc.) in ChatGPT. */
-  private attachAssistantActionButtons(prompts: PromptRecord[], activeMap: Record<string, string>): void {
-    if (!activeMap || Object.keys(activeMap).length === 0) return;
+  /** Attach sleek icon button to a ChatGPT user prompt turn. */
+  private attachUserButtonToTurn(
+    turn: HTMLElement,
+    textTarget: HTMLElement,
+    initialView: 'safe' | 'original',
+    record: PromptRecord,
+    activeMap: Record<string, string>,
+  ): void {
+    const host = document.createElement('div');
+    host.className = 'p2shield-action-host user-action';
 
-    // In ChatGPT, assistant action buttons live in the bottom action bar.
-    // Modern ChatGPT explicitly tags the assistant response copy button with data-testid="copy-turn-action-button".
-    const copyBtns = document.querySelectorAll<HTMLElement>(
-      [
-        'button[data-testid="copy-turn-action-button"]',
-        'button[data-testid="action-bar-copy"]',
-        'button[aria-label="Copy response"]',
-        'button[aria-label*="Copy response" i]',
-        'article:has([data-message-author-role="assistant"]) button[aria-label*="Copy" i]',
-        '[data-testid*="conversation-turn"]:has([data-message-author-role="assistant"]) button[aria-label*="Copy" i]',
-        '[data-message-author-role="assistant"] ~ * button[aria-label*="Copy" i]',
-        '[data-message-author-role="assistant"] + * button[aria-label*="Copy" i]',
-      ].join(', '),
+    const shadow = host.attachShadow({ mode: 'open' });
+    const style = document.createElement('style');
+    style.textContent = CHATGPT_ACTION_BTN_CSS;
+    shadow.appendChild(style);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `action-btn ${initialView}`;
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'tooltip';
+
+    const render = (view: 'safe' | 'original') => {
+      btn.className = `action-btn ${view}`;
+      btn.replaceChildren();
+
+      const icon = view === 'safe' ? shieldIcon() : eyeIcon();
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+
+      const tipText = view === 'safe' ? 'Protected' : 'Original';
+
+      btn.setAttribute('aria-label', tipText);
+      tooltip.textContent = tipText;
+
+      btn.append(icon, dot, tooltip);
+    };
+
+    render(initialView);
+    this.userViews.set(btn, initialView);
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const liveTurn =
+        host.closest<HTMLElement>('article, [data-testid*="conversation-turn"], [data-testid*="turn"]') ||
+        turn;
+
+      const currentView: 'safe' | 'original' =
+        (liveTurn.getAttribute('data-p2shield-user-view') as 'safe' | 'original') ||
+        this.userViews.get(btn) ||
+        initialView;
+      const nextView: 'safe' | 'original' = currentView === 'safe' ? 'original' : 'safe';
+      this.userViews.set(btn, nextView);
+      liveTurn.setAttribute('data-p2shield-user-view', nextView);
+
+      // Dynamically resolve latest active tokens across all prompt records and vault
+      const tokenMap = this.getLatestTokenMap(record);
+
+      if (nextView === 'safe') {
+        const reverseMap = this.buildReverseMap(tokenMap);
+        this.replaceTextInTurn(liveTurn, reverseMap);
+      } else {
+        this.replaceTextInTurn(liveTurn, tokenMap);
+      }
+
+      render(nextView);
+    });
+
+    shadow.appendChild(btn);
+
+    // Placement:
+    // 1. Try finding native edit or copy button within user turn
+    const nativeBtn = turn.querySelector<HTMLElement>(
+      'button[aria-label*="Edit" i], button[data-testid*="edit" i], button[aria-label*="Copy" i], button[data-testid*="copy" i]',
     );
 
-    for (const copyBtn of copyBtns) {
-      // 1. Strictly ignore sidebars, history panels, navigation, and headers
-      if (copyBtn.closest('nav, aside, [role="navigation"], [class*="sidebar" i], [class*="history" i], header')) {
-        continue;
-      }
-
-      // 2. Strictly ensure this copy button is NOT for a user message
-      if (copyBtn.closest('[data-message-author-role="user"]')) {
-        continue;
-      }
-      const article = copyBtn.closest<HTMLElement>('article, [data-testid*="conversation-turn"]');
-      if (article && article.querySelector('[data-message-author-role="user"]') && !article.querySelector('[data-message-author-role="assistant"]')) {
-        continue;
-      }
-
-      // 3. Find the direct flex toolbar holding the assistant buttons
+    if (nativeBtn) {
       const flexBar =
-        copyBtn.closest<HTMLElement>(
-          'div.text-token-text-secondary, div.items-end div.flex, div.items-start div.flex, div.flex.items-center, div.flex',
-        ) || copyBtn.parentElement;
+        nativeBtn.closest<HTMLElement>(
+          'div.text-token-text-secondary, div.items-end div.flex, div.items-start div.flex, div.flex.items-center.gap-x-1, div.flex.items-center, div.flex',
+        ) || nativeBtn.parentElement;
 
-      if (!flexBar) continue;
-
-      // Prevent duplicate buttons in the same flex bar
-      if (flexBar.querySelector('.p2shield-action-host.assistant-action')) {
-        continue;
+      if (flexBar) {
+        const directChild =
+          nativeBtn.parentElement && nativeBtn.parentElement !== flexBar
+            ? nativeBtn.parentElement
+            : nativeBtn;
+        flexBar.insertBefore(host, directChild.nextSibling);
+        return;
       }
+    }
 
-      // 4. Find the corresponding assistant text container to undo/redo
-      const turn = article || copyBtn.closest<HTMLElement>('[data-testid*="conversation-turn"]') || copyBtn.parentElement?.parentElement;
-      const textTarget = turn?.querySelector<HTMLElement>('[data-message-author-role="assistant"]') || turn || copyBtn.parentElement;
+    // 2. Fallback: place in sleek .p2shield-user-toolbar right below user bubble
+    const bubble =
+      turn.querySelector<HTMLElement>('[data-message-author-role="user"]') ||
+      textTarget.parentElement ||
+      textTarget;
 
-      // 5. Determine initial view based on whether text currently contains dummy tokens or real private details
-      const text = textTarget?.textContent || '';
+    let toolbar = turn.querySelector<HTMLElement>('.p2shield-user-toolbar');
+    if (!toolbar) {
+      toolbar = document.createElement('div');
+      toolbar.className = 'p2shield-user-toolbar';
+      toolbar.style.cssText =
+        'display: flex !important; justify-content: flex-end !important; align-items: center !important; margin-top: 4px !important; gap: 4px !important; width: 100% !important; clear: both !important;';
+      bubble.insertAdjacentElement('afterend', toolbar);
+    }
+    toolbar.appendChild(host);
+  }
+
+  /** Locate all assistant response turns in ChatGPT and attach Restored/Raw AI toggle buttons. */
+  private attachAssistantTurns(activeMap: Record<string, string>): void {
+    if (!activeMap || Object.keys(activeMap).length === 0) return;
+
+    const assistantTurns: HTMLElement[] = [];
+
+    // 1. Find by author role assistant
+    const roleEls = document.querySelectorAll<HTMLElement>(
+      '[data-message-author-role="assistant"], div.markdown.prose, div.prose',
+    );
+    for (const el of roleEls) {
+      if (this.isIgnoredNavigation(el)) continue;
+      if (el.closest('[data-message-author-role="user"], .p2shield-user-toolbar')) continue;
+      const turn =
+        el.closest<HTMLElement>('article, [data-testid*="conversation-turn"], [data-testid*="turn"]') ||
+        el.parentElement ||
+        el;
+      if (turn.querySelector('[data-message-author-role="user"]') && !turn.querySelector('[data-message-author-role="assistant"]')) continue;
+      if (!assistantTurns.includes(turn)) assistantTurns.push(turn);
+    }
+
+    // 2. Find by assistant response actions (Copy button, excluding code blocks)
+    const copyBtns = document.querySelectorAll<HTMLElement>(
+      'button[aria-label*="Copy" i], button[data-testid*="copy" i]',
+    );
+    for (const btn of copyBtns) {
+      if (this.isIgnoredNavigation(btn)) continue;
+      if (btn.closest('pre, code, [data-message-author-role="user"], .p2shield-user-toolbar')) continue;
+      const turn =
+        btn.closest<HTMLElement>('article, [data-testid*="conversation-turn"], [data-testid*="turn"]') ||
+        btn.parentElement?.parentElement;
+      if (turn && !assistantTurns.includes(turn)) {
+        if (!turn.querySelector('[data-message-author-role="user"]') || turn.querySelector('[data-message-author-role="assistant"]')) {
+          assistantTurns.push(turn);
+        }
+      }
+    }
+
+    // 3. Attach button to each discovered assistant turn
+    for (const turn of assistantTurns) {
+      if (turn.querySelector('.p2shield-action-host.assistant-action')) continue;
+
+      const textTarget =
+        turn.querySelector<HTMLElement>('.markdown, .prose, [data-message-author-role="assistant"]') ||
+        turn;
+
+      const text = textTarget.textContent || turn.textContent || '';
       let hasSafe = false;
       let hasOrig = false;
       for (const [surrogate, original] of Object.entries(activeMap)) {
@@ -398,116 +474,121 @@ export class ChatGptProvider {
       }
 
       const initialView: 'restored' | 'raw' = hasSafe && !hasOrig ? 'raw' : 'restored';
-      textTarget?.setAttribute('data-p2shield-view', initialView);
-
-      // Create isolated shadow host
-      const host = document.createElement('div');
-      host.className = 'p2shield-action-host assistant-action';
-
-      const shadow = host.attachShadow({ mode: 'open' });
-      const style = document.createElement('style');
-      style.textContent = CHATGPT_ACTION_BTN_CSS;
-      shadow.appendChild(style);
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = `action-btn ${initialView}`;
-
-      const tooltip = document.createElement('span');
-      tooltip.className = 'tooltip';
-
-      const render = (view: 'restored' | 'raw') => {
-        btn.className = `action-btn ${view}`;
-        btn.replaceChildren();
-
-        const icon = view === 'restored' ? shieldIcon() : eyeIcon();
-        const dot = document.createElement('span');
-        dot.className = 'dot';
-
-        const tipText = view === 'restored' ? 'Restored' : 'Raw AI';
-
-        btn.title = tipText;
-        tooltip.textContent = tipText;
-
-        btn.append(icon, dot, tooltip);
-      };
-
-      render(initialView);
-
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        const currentView = this.assistantViews.get(btn) ?? initialView;
-        const nextView: 'restored' | 'raw' = currentView === 'restored' ? 'raw' : 'restored';
-        this.assistantViews.set(btn, nextView);
-
-        if (textTarget) {
-          textTarget.setAttribute('data-p2shield-view', nextView);
-          if (nextView === 'raw') {
-            // Undo: flip restored real details back to raw synthetic surrogate values
-            const reverseMap = this.buildReverseMap(activeMap);
-            this.replaceTextInTurn(textTarget, reverseMap);
-          } else {
-            // Redo: restore real private details
-            this.replaceTextInTurn(textTarget, activeMap);
-          }
-        }
-
-        render(nextView);
-      });
-
-      shadow.appendChild(btn);
-
-      // 6. Insert immediately next to Copy button in the ChatGPT assistant toolbar
-      const directChild =
-        copyBtn.parentElement && copyBtn.parentElement !== flexBar
-          ? copyBtn.parentElement
-          : copyBtn;
-      flexBar.insertBefore(host, directChild.nextSibling);
+      this.attachAssistantButtonToTurn(turn, textTarget, initialView, activeMap);
     }
   }
 
-  /**
-   * Inserts the button into ChatGPT's native action bar (next to Copy).
-   * Keeps the button on the exact same row as native Copy / Edit tools.
-   */
-  private insertIntoChatGPTActionBar(turn: HTMLElement, host: HTMLElement, role: 'user' | 'assistant'): void {
-    const copySelector =
-      role === 'assistant'
-        ? 'button[aria-label*="Copy" i], button[data-testid*="copy" i], button[data-testid="copy-turn-action-button"], button[aria-label*="Share" i]'
-        : 'button[aria-label*="Copy" i], button[data-testid*="copy" i], button[aria-label*="Edit" i]';
+  /** Attach sleek icon button to a ChatGPT assistant response turn. */
+  private attachAssistantButtonToTurn(
+    turn: HTMLElement,
+    textTarget: HTMLElement,
+    initialView: 'restored' | 'raw',
+    activeMap: Record<string, string>,
+  ): void {
+    turn.setAttribute('data-p2shield-view', initialView);
+    textTarget.setAttribute('data-p2shield-view', initialView);
 
-    const copyBtn = turn.querySelector<HTMLElement>(copySelector);
+    const host = document.createElement('div');
+    host.className = 'p2shield-action-host assistant-action';
 
-    if (copyBtn) {
+    const shadow = host.attachShadow({ mode: 'open' });
+    const style = document.createElement('style');
+    style.textContent = CHATGPT_ACTION_BTN_CSS;
+    shadow.appendChild(style);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `action-btn ${initialView}`;
+
+    const tooltip = document.createElement('span');
+    tooltip.className = 'tooltip';
+
+    const render = (view: 'restored' | 'raw') => {
+      btn.className = `action-btn ${view}`;
+      btn.replaceChildren();
+
+      const icon = view === 'restored' ? shieldIcon() : eyeIcon();
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+
+      const tipText = view === 'restored' ? 'Restored' : 'Raw AI';
+
+      btn.setAttribute('aria-label', tipText);
+      tooltip.textContent = tipText;
+
+      btn.append(icon, dot, tooltip);
+    };
+
+    render(initialView);
+    this.assistantViews.set(btn, initialView);
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const liveTurn =
+        host.closest<HTMLElement>('article, [data-testid*="conversation-turn"], [data-testid*="turn"]') ||
+        turn;
+
+      const currentView: 'restored' | 'raw' =
+        (liveTurn.getAttribute('data-p2shield-view') as 'restored' | 'raw') ||
+        this.assistantViews.get(btn) ||
+        initialView;
+      const nextView: 'restored' | 'raw' = currentView === 'restored' ? 'raw' : 'restored';
+      this.assistantViews.set(btn, nextView);
+      liveTurn.setAttribute('data-p2shield-view', nextView);
+
+      // Dynamically resolve latest active tokens across all prompt records and vault
+      const tokenMap = this.getLatestTokenMap();
+
+      if (nextView === 'raw') {
+        const reverseMap = this.buildReverseMap(tokenMap);
+        this.replaceTextInTurn(liveTurn, reverseMap);
+      } else {
+        this.replaceTextInTurn(liveTurn, tokenMap);
+      }
+
+      render(nextView);
+    });
+
+    shadow.appendChild(btn);
+
+    // Placement:
+    // 1. Try finding native action toolbar with Copy, Good response, Read aloud, or Try again
+    const nativeBtn = turn.querySelector<HTMLElement>(
+      'button[aria-label*="Copy" i], button[data-testid*="copy" i], button[aria-label*="Good response" i], button[aria-label*="Read aloud" i], button[aria-label*="Try again" i]',
+    );
+
+    if (nativeBtn) {
       const flexBar =
-        copyBtn.closest<HTMLElement>(
-          'div.text-token-text-secondary, div.items-end div.flex, div.items-start div.flex, div.flex.items-center, div.flex',
-        ) || copyBtn.parentElement;
+        nativeBtn.closest<HTMLElement>(
+          'div.text-token-text-secondary, div.items-start div.flex, div.flex.items-center.gap-x-1, div.flex.items-center, div.flex',
+        ) || nativeBtn.parentElement;
 
       if (flexBar) {
-        if (flexBar.querySelector(`.p2shield-action-host.${role}-action`)) {
-          return;
-        }
         const directChild =
-          copyBtn.parentElement && copyBtn.parentElement !== flexBar
-            ? copyBtn.parentElement
-            : copyBtn;
+          nativeBtn.parentElement && nativeBtn.parentElement !== flexBar
+            ? nativeBtn.parentElement
+            : nativeBtn;
         flexBar.insertBefore(host, directChild.nextSibling);
         return;
       }
     }
 
-    // Fallback: look for ChatGPT action row container within turn
-    const actionBar = turn.querySelector<HTMLElement>('div.text-token-text-secondary, div.items-end div.flex, div.flex.items-center');
-    if (actionBar && !actionBar.querySelector(`.p2shield-action-host.${role}-action`)) {
-      actionBar.appendChild(host);
+    // 2. Fallback: place in sleek .p2shield-assistant-toolbar right below assistant response
+    let toolbar = turn.querySelector<HTMLElement>('.p2shield-assistant-toolbar');
+    if (!toolbar) {
+      toolbar = document.createElement('div');
+      toolbar.className = 'p2shield-assistant-toolbar';
+      toolbar.style.cssText =
+        'display: flex !important; justify-content: flex-start !important; align-items: center !important; margin-top: 6px !important; gap: 4px !important; width: 100% !important; clear: both !important;';
+      textTarget.insertAdjacentElement('afterend', toolbar);
     }
+    toolbar.appendChild(host);
   }
 
   /** Builds a reversed map of original values to synthetic surrogates, sorted by descending original length. */
-  private buildReverseMap(tokenMap: Record<string, string>): Record<string, string> {
+  buildReverseMap(tokenMap: Record<string, string>): Record<string, string> {
     const entries = Object.entries(tokenMap)
       .filter(([surrogate, original]) => Boolean(original && surrogate && original !== surrogate))
       .sort((a, b) => b[1].length - a[1].length);
@@ -532,7 +613,10 @@ export class ChatGptProvider {
           parent.tagName === 'P2SHIELD-HOST' ||
           parent.classList.contains('p2shield-action-host') ||
           parent.closest('.p2shield-action-host') ||
-          parent.closest('p2shield-host')
+          parent.closest('p2shield-host') ||
+          parent.closest('button') ||
+          parent.closest('.p2shield-user-toolbar') ||
+          parent.closest('.p2shield-assistant-toolbar')
         ) {
           return NodeFilter.FILTER_REJECT;
         }
@@ -547,6 +631,7 @@ export class ChatGptProvider {
         const replaced = restore(val, map);
         if (replaced !== val) {
           current.nodeValue = replaced;
+          (current as CharacterData).data = replaced;
         }
       }
     }

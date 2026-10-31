@@ -116,8 +116,11 @@ export function restoreDetailed(text: string, tokenMap: Record<string, string>):
       pattern = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
+    // Support flexible spacing across HTML text nodes (&nbsp; / non-breaking space vs regular space)
+    const flexPattern = pattern.replace(/ +/g, '[ \\u00A0]+');
+
     // Use case-insensitive matching
-    const regex = new RegExp(pattern, 'gi');
+    const regex = new RegExp(flexPattern, 'gi');
 
     let matchCount = 0;
     current = current.replace(regex, () => {
