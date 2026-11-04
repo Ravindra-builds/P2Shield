@@ -7,9 +7,12 @@
   <style>
     :root { color-scheme: light dark; }
     body { font: 15px/1.5 system-ui, "Segoe UI", sans-serif; margin: 0; background: #f1f5f9; color: #0f172a; }
-    @media (prefers-color-scheme: dark) { body { background: #0b1020; color: #e5e7eb; } .panel { background: #131a2e !important; border-color: #263049 !important; } textarea, input, .ce { background: #0b1020 !important; color: #e5e7eb !important; border-color: #334155 !important; } pre { background: #0b1020 !important; } }
-    header { padding: 18px 24px; border-bottom: 1px solid #cbd5e1; }
-    h1 { margin: 0; font-size: 20px; } header p { margin: 4px 0 0; color: #475569; font-size: 14px; }
+    @media (prefers-color-scheme: dark) { body { background: #0b1020; color: #e5e7eb; } .panel { background: #131a2e !important; border-color: #263049 !important; } textarea, input, .ce { background: #0b1020 !important; color: #e5e7eb !important; border-color: #334155 !important; } pre { background: #0b1020 !important; } .header-top { border-color: #263049 !important; } .header-breadcrumb { color: #a5b4fc !important; } .header-badge { color: #388bfd !important; background: #0a1f3d !important; } h1 { color: #f8fafc !important; } header p { color: #94a3b8 !important; } }
+    header { max-width: 1000px; margin: 0 auto; padding: 18px 16px 4px; box-sizing: border-box; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 18px; border-bottom: 1px solid #cbd5e1; }
+    .header-breadcrumb { color: #4f46e5; font-size: 14px; font-weight: 500; }
+    .header-badge { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #2563eb; background: #eff6ff; padding: 3px 10px; border-radius: 9999px; line-height: 1.4; display: inline-flex; align-items: center; }
+    h1 { margin: 26px 0 10px; font-size: 26px; font-weight: 700; line-height: 1.2; color: #0f172a; } header p { margin: 0; color: #475569; font-size: 14px; line-height: 1.5; }
     main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 80px; display: grid; gap: 22px; }
     .panel { background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px 18px; }
     .panel h2 { margin: 0 0 4px; font-size: 16px; } .note { color: #64748b; font-size: 13px; margin: 0 0 10px; }
@@ -34,7 +37,11 @@
 </head>
 <body>
   <header>
-    <h1>Demo chatbots</h1>
+    <div class="header-top">
+      <div class="header-breadcrumb">P2Shield / Developer Tools</div>
+      <span class="header-badge">INTEGRATION LAB</span>
+    </div>
+    <h1>Demo Chatbots</h1>
     <p>Each box below behaves differently under the hood. Click into a box, pick a sample (or type), click the shield, then press Send to see exactly what the page would receive.</p>
   </header>
   <main>
