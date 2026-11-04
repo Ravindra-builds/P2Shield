@@ -5,11 +5,13 @@ import type { Category, Detection, EntityType, Source } from './types';
 import {
   CITIES,
   FIRST_NAMES,
+  FIRST_NAMES_LOWER,
   MEDICAL_CONDITIONS,
   MEDICATIONS,
   MONTHS,
   STOP_WORDS,
   SURNAMES,
+  SURNAMES_LOWER,
 } from './lexicon';
 import {
   aadhaarValid,
@@ -640,8 +642,6 @@ export function detectCredentials(text: string): Detection[] {
 
 // --------------------------------------------------------------------------
 // Heuristic detectors (Basic mode: lower confidence, no model needed)
-// --------------------------------------------------------------------------
-
 const NAME_WORD = "[A-Z][a-z]{1,}(?:['\u2019-][A-Z]?[a-z]+)?";
 export const NAME_SEQ = new RegExp(`${NAME_WORD}(?:\\s+${NAME_WORD}){0,2}`, 'y');
 
@@ -660,10 +660,49 @@ export function trimToNames(seq: string): string {
 }
 
 /** Read a capitalised name starting exactly at `start`. */
-function nameAt(text: string, start: number): string {
+export function nameAt(text: string, start: number): string {
   NAME_SEQ.lastIndex = start;
   const n = NAME_SEQ.exec(text);
   return n ? trimToNames(n[0]) : '';
+}
+
+const AMBIGUOUS_LOWER_NAMES = new Set([
+  'will', 'may', 'mark', 'rob', 'bill', 'art', 'guy', 'pat', 'van', 'rose', 'grace', 'faith', 'joy',
+  'hope', 'dawn', 'ray', 'gene', 'dean', 'grant', 'miles', 'dale', 'glen', 'wade', 'lane', 'chase',
+  'drew', 'reed', 'cole', 'troy', 'blake', 'clark', 'bruce', 'craig', 'kent', 'cliff', 'ford', 'ross',
+  'robin', 'penny', 'crystal', 'amber', 'holly', 'summer', 'autumn', 'april', 'june', 'august', 'major',
+]);
+
+export function isKnownFirstName(word: string): boolean {
+  if (!word || word.length < 2) return false;
+  if (FIRST_NAMES.has(word)) return true;
+  const lower = word.toLowerCase();
+  if (AMBIGUOUS_LOWER_NAMES.has(lower)) return false;
+  return FIRST_NAMES_LOWER.has(lower);
+}
+
+export function isKnownSurname(word: string): boolean {
+  if (!word || word.length < 2) return false;
+  if (SURNAMES.has(word)) return true;
+  return SURNAMES_LOWER.has(word.toLowerCase());
+}
+
+export function extractNameAt(text: string, start: number, allowLower = false): string {
+  const sub = text.slice(start);
+  const m = sub.match(/^[a-zA-Z][a-zA-Z'\u2019-]*(?:\s+[a-zA-Z][a-zA-Z'\u2019-]*){0,2}/);
+  if (!m) return '';
+  const words = m[0].split(/\s+/);
+  const kept: string[] = [];
+  for (const wd of words) {
+    const lower = wd.toLowerCase();
+    const cap = lower[0].toUpperCase() + lower.slice(1);
+    if (STOP_WORDS.has(wd) || STOP_WORDS.has(cap)) break;
+    if (MONTHS.has(wd) || MONTHS.has(cap)) break;
+    if (/(?:ing|ly|ed)$/i.test(wd) && !isKnownFirstName(wd)) break;
+    if (!allowLower && !/^[A-Z]/.test(wd)) break;
+    kept.push(wd);
+  }
+  return kept.join(' ');
 }
 
 const RELATIONS =
@@ -674,66 +713,76 @@ const PERSON_NOUN =
 export function detectPersons(text: string): Detection[] {
   const out: Detection[] = [];
 
-  // Titles: Dr. Anil Kumar -> name part only
-  for (const m of text.matchAll(/\b(?:Mr|Mrs|Ms|Mx|Miss|Dr|Shri|Smt|Kumari|Prof|Sir|Sri|Herr|Frau|Mme|Mlle|Mister|Madam|Capt|Lt|Sgt)\.?\s+(?=[A-Z])/g)) {
+  // Titles: Dr. Anil Kumar -> name part only (including lowercase)
+  for (const m of text.matchAll(/\b(?:Mr|Mrs|Ms|Mx|Miss|Dr|Shri|Smt|Kumari|Prof|Sir|Sri|Herr|Frau|Mme|Mlle|Mister|Madam|Capt|Lt|Sgt)\.?\s*[-:=]?\s*(?=[a-zA-Z])/gi)) {
     const start = m.index! + m[0].length;
-    const name = nameAt(text, start);
+    const name = extractNameAt(text, start, true);
     if (!name) continue;
     out.push(mk('PERSON', start, start + name.length, name, 0.88, 'heuristic', 'Name after a title (Mr./Dr./Shri ...)'));
   }
 
-  // Cue phrases
-  const STRONG = /\b(?:my name is|my name's|name is|i am called|i'm called|call me|(?:patient|employee|customer|client|user|contact|applicant|candidate|student|account holder|cardholder|card holder|beneficiary|nominee|guardian)(?: full)? name\s*(?:is|[:=-])|(?:full |first |last |legal )?name\s*[:=-]|patient\s*[:=-]|employee\s*[:=-]|customer\s*[:=-]|signed\s*[:=-])\s*/gi;
-  const WEAK = /\b(?:i am|i'm|this is|hi|hello|hey|dear|regards,?|thanks,?|thank you,?|sincerely,?|cheers,|best,|yours,|warmly,|respectfully,|love,|signed(?: by)?|patient|employee|customer|client|applicant|candidate|with|met|meet|told|asked|cc|attn:?)\s+/gi;
+  // Strong cue phrases (support punctuation like - or :)
+  const STRONG =
+    /\b(?:my(?:\s+full|\s+first)?\s+name\s*(?:is\s*[-:=]?|'s|[:=-]|\s*[-:=]?)|(?:patient|employee|customer|client|user|contact|applicant|candidate|student|account holder|cardholder|beneficiary|nominee|guardian)(?: full)? name\s*(?:is\s*[-:=]?|[:=-]|\s*[-:=]?)|(?:full |first |last |legal )?name\s*[:=-]|patient\s*[:=-]|employee\s*[:=-]|customer\s*[:=-]|signed\s*[:=-]|call\s+me\s+)\s*/gi;
+  const WEAK =
+    /\b(?:i am called|i'm called|\bim\s+called\b|i am|i'm|\bim\b|myself|this is|hi\s+(?:i am|i'm|\bim\b)|hello\s+(?:i am|i'm|\bim\b)|hey\s+(?:i am|i'm|\bim\b)|hi|hello|hey|dear|regards,?|thanks,?|thank you,?|sincerely,?|cheers,|best,|yours,|warmly,|respectfully,|love,|signed(?: by)?|patient|employee|customer|client|applicant|candidate|with|met|meet|told|asked|cc|attn:?)\s*[-:=]?\s*/gi;
+
   for (const [re, strong] of [[STRONG, true], [WEAK, false]] as const) {
     for (const m of text.matchAll(re)) {
       const start = m.index! + m[0].length;
-      const name = nameAt(text, start);
+      const name = extractNameAt(text, start, true);
       if (!name) continue;
       const words = name.split(' ');
-      const known = FIRST_NAMES.has(words[0]);
+      const isTitleCase = words.every((w) => /^[A-Z][a-z]+/.test(w));
+      const known = isKnownFirstName(words[0]);
+      if (!known && !isTitleCase) continue;
       if (strong) {
-        out.push(mk('PERSON', start, start + name.length, name, known ? 0.92 : 0.8, 'heuristic', 'Name introduced by a cue phrase'));
-      } else if (known || (words.length >= 2 && SURNAMES.has(words[words.length - 1]))) {
-        out.push(mk('PERSON', start, start + name.length, name, known ? 0.82 : 0.7, 'heuristic', 'Name following a greeting or role word'));
-      } else if (words.length >= 2 && !/\b(?:with|met|meet|told|asked)\s+$/i.test(m[0])) {
-        out.push(mk('PERSON', start, start + name.length, name, 0.66, 'heuristic', 'Name following a greeting or role word'));
+        out.push(mk('PERSON', start, start + name.length, name, known ? 0.94 : 0.85, 'heuristic', 'Name introduced by a cue phrase'));
+      } else if (known || (words.length >= 2 && isKnownSurname(words[words.length - 1]))) {
+        out.push(mk('PERSON', start, start + name.length, name, known ? 0.90 : 0.76, 'heuristic', 'Name following a greeting or role word'));
+      } else if (words.length >= 2 && !/\b(?:with|met|meet|told|asked)\s*[-:=]?\s*$/i.test(m[0])) {
+        out.push(mk('PERSON', start, start + name.length, name, 0.68, 'heuristic', 'Name following a greeting or role word'));
       }
     }
   }
 
-  // Relationships: "my wife Priya", "our landlord, Mr Rao", "my boss's name is Mark"
-  for (const m of text.matchAll(new RegExp(`\\b(?:my|our|his|her|their|your)\\s+(?:${RELATIONS})(?:'s name is|,| named| called| is)?\\s+(?=[A-Z])`, 'gi'))) {
+  // Relationships: "my wife Priya", "our landlord, Mr Rao", "my doctor name is - rahul prakash"
+  const REL_RE = new RegExp(
+    `\\b(?:my|our|his|her|their|your)?\\s*(?:${RELATIONS})\\s*(?:(?:'s)?\\s*(?:full |first |last )?name\\s*(?:is\\s*[-:=]?|[:=-])?|(?:'s)?\\s*(?:is|was)\\s*[-:=]?|named|called|[:=-])\\s*`,
+    'gi',
+  );
+  for (const m of text.matchAll(REL_RE)) {
     const start = m.index! + m[0].length;
-    const name = nameAt(text, start);
+    const name = extractNameAt(text, start, true);
     if (!name) continue;
-    const known = FIRST_NAMES.has(name.split(' ')[0]);
-    out.push(mk('PERSON', start, start + name.length, name, known ? 0.88 : 0.76, 'heuristic', 'Name after a relationship word'));
+    const words = name.split(' ');
+    const isTitleCase = words.every((w) => /^[A-Z][a-z]+/.test(w));
+    const known = isKnownFirstName(words[0]);
+    if (!known && !isTitleCase) continue;
+    out.push(mk('PERSON', start, start + name.length, name, known ? 0.92 : 0.80, 'heuristic', 'Name after a relationship word'));
   }
 
   // "a patient named Ravi", "a guy called John Smith"
-  for (const m of text.matchAll(/\b(?:named|called|nicknamed|aka|a\.k\.a\.)\s+(?=[A-Z])/g)) {
+  for (const m of text.matchAll(/\b(?:named|called|nicknamed|aka|a\.k\.a\.)\s*[-:=]?\s*(?=[a-zA-Z])/gi)) {
     const start = m.index! + m[0].length;
-    const name = nameAt(text, start);
+    const name = extractNameAt(text, start, true);
     if (!name) continue;
-    const known = FIRST_NAMES.has(name.split(' ')[0]);
+    const known = isKnownFirstName(name.split(' ')[0]);
     const personish = near(text, m.index!, m.index!, PERSON_NOUN, 30);
     if (!known && !personish) continue;
-    out.push(mk('PERSON', start, start + name.length, name, known ? 0.86 : 0.74, 'heuristic', 'Name after "named" / "called"'));
+    out.push(mk('PERSON', start, start + name.length, name, known ? 0.88 : 0.74, 'heuristic', 'Name after "named" / "called"'));
   }
 
   // Email headers: From: Jane Doe <jane@x.com>
-  for (const m of text.matchAll(/^[ \t>]*(?:From|To|Cc|Bcc|Reply-To|Sender|Attn|Attention)\s*:\s*"?([A-Z][A-Za-z'\u2019.-]+(?:\s+[A-Z][A-Za-z'\u2019.-]+){0,3})"?\s*(?=<|,|;|$)/gm)) {
+  for (const m of text.matchAll(/^[ \t>]*(?:From|To|Cc|Bcc|Reply-To|Sender|Attn|Attention)\s*:\s*"?([A-Za-z'\u2019.-]+(?:\s+[A-Za-z'\u2019.-]+){0,3})"?\s*(?=<|,|;|$)/gm)) {
     const name = m[1].trim();
     const start = m.index! + m[0].indexOf(name);
     const words = name.split(/\s+/);
-    if (words.length < 2 && !FIRST_NAMES.has(words[0])) continue;
+    if (words.length < 2 && !isKnownFirstName(words[0])) continue;
     out.push(mk('PERSON', start, start + name.length, name, 0.86, 'heuristic', 'Name in an email header'));
   }
 
   // Known first names (optionally followed by a known surname)
-  // The second word is a lookahead so "Contact Priya Verma" still reaches "Priya" (a consuming match
-  // would swallow "Priya" as the second word of "Contact Priya").
   for (const m of text.matchAll(/\b([A-Z][a-z]+)\b(?=(?:[ \t]+([A-Z][a-z]+(?:-[A-Z][a-z]+)?)\b)?)/g)) {
     const first = m[1];
     if (!FIRST_NAMES.has(first) || STOP_WORDS.has(first)) continue;
@@ -748,15 +797,28 @@ export function detectPersons(text: string): Detection[] {
     }
   }
 
+  // Lowercase known first names (e.g. "rahul prakash", "ravindra", "doctor rahul")
+  for (const m of text.matchAll(/\b([a-z]{2,})\b(?=(?:[ \t]+([a-z]{2,}(?:-[a-z]{2,})?)\b)?)/g)) {
+    const first = m[1];
+    if (!isKnownFirstName(first)) continue;
+    const second = m[2];
+    if (second && (isKnownSurname(second) || isKnownFirstName(second))) {
+      const full = text.slice(m.index!, text.indexOf(second, m.index! + first.length) + second.length);
+      out.push(mk('PERSON', m.index!, m.index! + full.length, full, 0.88, 'heuristic', 'Common first name followed by a surname'));
+    } else if (near(text, m.index!, m.index! + first.length, /\b(?:hi|hello|hey|dear|i am|i'm|name|doctor|dr|patient|mr|mrs|ms)\b/i, 30)) {
+      out.push(mk('PERSON', m.index!, m.index! + first.length, first, 0.72, 'heuristic', 'Common first name near greeting or cue'));
+    }
+  }
+
   // Propagate: later bare mentions of a detected name word (e.g. "Rahul" after "Rahul Sharma")
   const seen = new Set<string>();
   for (const d of out.slice()) {
     if (d.confidence < 0.6) continue;
     for (const word of d.text.split(/\s+/)) {
-      if (word.length < 3 || !isNameish(word) || seen.has(word)) continue;
-      seen.add(word);
-      for (const m of text.matchAll(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'))) {
-        out.push(mk('PERSON', m.index!, m.index! + word.length, word, 0.74, 'heuristic', 'Repeat mention of a detected name'));
+      if (word.length < 3 || !isNameish(word) || seen.has(word.toLowerCase())) continue;
+      seen.add(word.toLowerCase());
+      for (const m of text.matchAll(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'))) {
+        out.push(mk('PERSON', m.index!, m.index! + word.length, m[0], 0.74, 'heuristic', 'Repeat mention of a detected name'));
       }
     }
   }
@@ -769,13 +831,37 @@ const MED_RE = new RegExp(
   'gi',
 );
 
+const BODY_ORGANS =
+  'liver|kidney|heart|cardiac|lung|pulmonary|brain|spine|spinal|stomach|gastric|gastro|bowel|colon|prostate|breast|thyroid|blood|bone|joint|skin|eye|vision|ear|hearing|throat|mental|pancreatic|pancreas|gallbladder|urinary|bladder|renal|hepatic|chest|back|neck|abdomen|abdominal|pelvic';
+const HEALTH_ISSUES =
+  'problem|problems|issue|issues|disease|diseases|disorder|disorders|infection|infections|failure|damage|condition|conditions|illness|illnesses|complication|complications|cancer|cancers|tumor|tumors|tumour|tumours|syndrome|syndromes|inflammation|pain|deficiency|attack|attacks|surgery|surgeries|transplant|biopsy|cyst|cysts|stone|stones';
+const ORGAN_HEALTH_RE = new RegExp(`\\b(?:${BODY_ORGANS})\\s+(?:${HEALTH_ISSUES})\\b`, 'gi');
+
+const SPECIALIST_RE = new RegExp(
+  `\\b(?:${BODY_ORGANS})\\s+(?:doctor|specialist|physician|surgeon|consultant)\\b|\\b(?:oncologist|cardiologist|hepatologist|nephrologist|dermatologist|psychiatrist|neurologist|gastroenterologist|urologist|endocrinologist|rheumatologist|orthopedic|gynecologist|pulmonologist|pediatrician)\\b`,
+  'gi',
+);
+
+const SYMPTOM_STATEMENT_RE =
+  /\b(?:i have|i'm having|i am having|suffering from|diagnosed with|treatment for|treated for|experiencing|struggling with|history of|recovering from)\s+(?:an?\s+|the\s+)?([a-z]+(?:\s+[a-z]+){0,2}\s+(?:problem|issue|disease|disorder|infection|failure|condition|pain|syndrome|illness))/gi;
+
 export function detectMedical(text: string): Detection[] {
   const out: Detection[] = [];
   for (const m of text.matchAll(CONDITION_RE)) {
-    out.push(mk('MEDICAL', m.index!, m.index! + m[0].length, m[0], 0.82, 'heuristic', 'Known medical condition', 'MEDICAL_CONDITION'));
+    out.push(mk('MEDICAL', m.index!, m.index! + m[0].length, m[0], 0.85, 'heuristic', 'Known medical condition', 'MEDICAL_CONDITION'));
   }
   for (const m of text.matchAll(MED_RE)) {
-    out.push(mk('MEDICAL', m.index!, m.index! + m[0].length, m[0], 0.82, 'heuristic', 'Known medication', 'MEDICATION'));
+    out.push(mk('MEDICAL', m.index!, m.index! + m[0].length, m[0], 0.85, 'heuristic', 'Known medication', 'MEDICATION'));
+  }
+  for (const m of text.matchAll(ORGAN_HEALTH_RE)) {
+    out.push(mk('MEDICAL', m.index!, m.index! + m[0].length, m[0], 0.88, 'heuristic', 'Organ or bodily health condition', 'MEDICAL_CONDITION'));
+  }
+  for (const m of text.matchAll(SPECIALIST_RE)) {
+    out.push(mk('MEDICAL', m.index!, m.index! + m[0].length, m[0], 0.84, 'heuristic', 'Medical specialist or clinical specialty', 'MEDICAL_SPECIALIST'));
+  }
+  for (const m of text.matchAll(SYMPTOM_STATEMENT_RE)) {
+    const [s, e] = m.indices ? m.indices[1] : [m.index! + m[0].indexOf(m[1]), m.index! + m[0].indexOf(m[1]) + m[1].length];
+    out.push(mk('MEDICAL', s, e, m[1], 0.84, 'heuristic', 'Health symptom or problem statement', 'MEDICAL_CONDITION'));
   }
   // Cue phrases: "diagnosed with X"
   const cue = /\b(?:diagnosed with|diagnosis of|suffering from|suffers from|history of|treated for|symptoms of|tested positive for|prescribed)\s+((?:an?\s+|the\s+)?[a-z][a-z-]*(?:\s+[a-z][a-z-]*){0,2})/gid;
@@ -786,7 +872,7 @@ export function detectMedical(text: string): Detection[] {
     if (!phrase) continue;
     s = m.index! + m[0].indexOf(phrase);
     e = s + phrase.length;
-    out.push(mk('MEDICAL', s, e, phrase, 0.66, 'heuristic', 'Health condition after a diagnosis cue', 'MEDICAL_CONDITION'));
+    out.push(mk('MEDICAL', s, e, phrase, 0.72, 'heuristic', 'Health condition after a diagnosis cue', 'MEDICAL_CONDITION'));
   }
   // Lab readings
   for (const m of text.matchAll(/\b(?:hba1c|blood sugar|glucose|bp|blood pressure|cholesterol|creatinine|hemoglobin|haemoglobin|ldl|hdl|tsh|psa|bmi)\s*(?:is|was|of|:|=|level)?\s*\d+(?:[./]\d+)?(?:\s?(?:mg\/dl|mmhg|mmol\/l|g\/dl|%))?/gi)) {

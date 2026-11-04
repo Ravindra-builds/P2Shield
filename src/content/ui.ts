@@ -73,7 +73,20 @@ const CSS = `
 .meta { font-size: 11.5px; color: #5a607c; margin-top: 3px; }
 .arrow { color: #8a90ab; }
 .panel footer { padding: 10px 14px; border-top: 1px solid rgba(20,24,60,.08); font-size: 11.5px; color: #5a607c; background: rgba(20,24,60,.03); }
-.lock { font-size: 11.5px; color: #b91c1c; margin-top: 2px; font-weight: 550; }
+/* View toggle & Diff styles */
+.btn.view-toggle {
+  background: rgba(16, 185, 129, 0.15); color: #059669; display: inline-flex; align-items: center; gap: 5px; font-weight: 650;
+}
+.btn.view-toggle:hover { background: rgba(16, 185, 129, 0.25); }
+.btn.view-toggle.orig { background: rgba(245, 158, 11, 0.18); color: #d97706; }
+.btn.view-toggle.orig:hover { background: rgba(245, 158, 11, 0.28); }
+.diff-container { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid rgba(20,24,60,.08); background: rgba(20,24,60,.02); max-height: 160px; overflow-y: auto; }
+.diff-pane { border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.45; word-break: break-word; border: 1px solid rgba(20,24,60,.08); background: #fff; }
+.diff-label { font-size: 10.5px; font-weight: 750; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.diff-label.orig { color: #d97706; }
+.diff-label.safe { color: #059669; }
+.diff-orig-text { color: #374151; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11.5px; }
+.diff-safe-text { color: #111827; font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 11.5px; font-weight: 550; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
 @media (prefers-color-scheme: dark) {
@@ -82,6 +95,14 @@ const CSS = `
   .chip .sub, .meta, .panel footer { color: #a3a9c6; }
   .btn { background: rgba(140,140,255,.16); color: #cfd0ff; }
   .btn:hover { background: rgba(140,140,255,.26); }
+  .btn.view-toggle { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; }
+  .btn.view-toggle.orig { background: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+  .diff-container { border-color: rgba(255,255,255,.08); background: rgba(0,0,0,.2); }
+  .diff-pane { background: rgba(25, 28, 48, 0.85); border-color: rgba(255,255,255,.1); }
+  .diff-label.orig { color: #fbbf24; }
+  .diff-label.safe { color: #34d399; }
+  .diff-orig-text { color: #9ca3af; }
+  .diff-safe-text { color: #f3f4f6; }
   .row:hover { background: rgba(140,140,255,.1); }
   .pill { background: rgba(140,140,255,.18); color: #d4d5ff; }
   .pill.cred { background: rgba(248,113,113,.18); color: #fecaca; }
@@ -130,6 +151,7 @@ export interface UiCallbacks {
   onProtect(): void;
   onUndo(): void;
   onToggle(findingId: string, protect: boolean): void;
+  onToggleView?(): void;
 }
 
 export interface ChipData {
@@ -137,6 +159,7 @@ export interface ChipData {
   sub?: string;
   undo?: boolean;
   details?: boolean;
+  viewState?: 'safe' | 'original';
 }
 
 export function previewOf(f: Finding): string {
@@ -206,6 +229,35 @@ export class ShieldUi {
     this.panel.setAttribute('aria-label', 'Protected items');
     this.layer.append(this.button, this.chip, this.panel);
     this.root.append(this.layer);
+
+    // Auto-close floating chip and details dialog when user clicks outside or presses Escape
+    document.addEventListener(
+      'pointerdown',
+      (e) => {
+        const path = e.composedPath();
+        const inHost =
+          path.includes(this.host) ||
+          path.includes(this.chip) ||
+          path.includes(this.panel) ||
+          path.includes(this.button);
+        if (!inHost) {
+          this.hideChip();
+          this.closePanel();
+        }
+      },
+      true,
+    );
+
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        if (e.key === 'Escape') {
+          this.hideChip();
+          this.closePanel();
+        }
+      },
+      true,
+    );
   }
 
   mount(): void {
@@ -279,13 +331,27 @@ export class ShieldUi {
     this.chip.style.top = `${top}px`;
   }
 
-  showChip(data: ChipData, autoHideMs = 9000): void {
+  showChip(data: ChipData, autoHideMs = 6000): void {
     this.mount();
     this.chip.replaceChildren();
     const msg = el('div', 'msg');
     msg.append(document.createTextNode(data.message));
     if (data.sub) msg.append(el('span', 'sub', data.sub));
     this.chip.append(msg);
+    if (data.viewState !== undefined) {
+      const viewBtn = el(
+        'button',
+        `btn view-toggle${data.viewState === 'original' ? ' orig' : ''}`,
+        data.viewState === 'safe' ? '👁️ View Original' : '🛡️ View Protected',
+      );
+      viewBtn.type = 'button';
+      viewBtn.title =
+        data.viewState === 'safe'
+          ? 'Preview your original private prompt in the editor'
+          : 'Preview the format-preserving protected prompt sent to AI';
+      viewBtn.addEventListener('click', () => this.cb.onToggleView?.());
+      this.chip.append(viewBtn);
+    }
     if (data.undo) {
       const undo = el('button', 'btn', 'Undo');
       undo.type = 'button';
@@ -293,7 +359,7 @@ export class ShieldUi {
       this.chip.append(undo);
     }
     if (data.details) {
-      const d = el('button', 'btn', 'Details');
+      const d = el('button', 'btn', 'Details / Diff');
       d.type = 'button';
       d.addEventListener('click', () => (this.panelOpen ? this.closePanel() : this.openPanelRequest()));
       this.chip.append(d);
@@ -345,7 +411,7 @@ export class ShieldUi {
     this.mount();
     this.panel.replaceChildren();
     const header = el('header');
-    header.append(el('h2', undefined, `Findings · ${profileName} · ${result.mode === 'smart' ? 'Smart' : 'Basic'} mode`));
+    header.append(el('h2', undefined, `Prompt Diff & Findings · ${profileName}`));
     const undo = el('button', 'btn', 'Undo all');
     undo.type = 'button';
     undo.addEventListener('click', () => this.cb.onUndo());
@@ -353,6 +419,18 @@ export class ShieldUi {
     close.type = 'button';
     close.addEventListener('click', () => this.closePanel());
     header.append(undo, close);
+
+    // Diff / Dual-view prompt comparison container
+    const diffContainer = el('div', 'diff-container');
+    const origPane = el('div', 'diff-pane');
+    origPane.append(el('div', 'diff-label orig', '🔒 Original Private Prompt (Device Only)'));
+    origPane.append(el('div', 'diff-orig-text', result.originalText));
+
+    const safePane = el('div', 'diff-pane');
+    safePane.append(el('div', 'diff-label safe', '🛡️ Protected Surrogate Prompt (Sent to AI)'));
+    safePane.append(el('div', 'diff-safe-text', result.safeText));
+
+    diffContainer.append(origPane, safePane);
 
     const list = el('div', 'list');
     if (!result.findings.length) list.append(el('div', 'row', 'Nothing sensitive was found.'));
@@ -387,9 +465,9 @@ export class ShieldUi {
     const footer = el(
       'footer',
       undefined,
-      'Analysis ran on this device. Nothing was sent anywhere. Uncheck an item to keep its original value.',
+      'Analysis and token mappings live 100% locally on this device. Uncheck an item to keep its original value.',
     );
-    this.panel.append(header, list, footer);
+    this.panel.append(header, diffContainer, list, footer);
     this.panel.classList.add('show');
     this.panelOpen = true;
     this.placePanel();

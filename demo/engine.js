@@ -14,7 +14,7 @@
   Pradeep Prakash Pranav Priya Priyanka Rachna Raghav Rahul Raj Rajesh Rajiv Rakesh Ramesh Ravi Rekha Rishi Rohan
   Rohit Ritu Sachin Sakshi Sameer Sandeep Sanjay Sanjana Sapna Sarita Saurabh Shivam Shreya Shruti Siddharth Simran
   Sneha Sonia Sonam Suman Sunil Sunita Suresh Sushil Swati Tanvi Tarun Tushar Uday Varun Vijay Vikas Vikram Vinay
-  Vinod Vishal Vivek Yash Yogesh Zoya Zara Imran Irfan Salman Faisal Farhan Fatima Aamir
+  Vinod Vishal Vivek Yash Yogesh Zoya Zara Imran Irfan Salman Faisal Farhan Fatima Aamir Ravindra
   Alice Amanda Andrew Angela Anthony Barbara Benjamin Brian Carol Charles Christopher Daniel David Deborah Donald
   Dorothy Edward Elizabeth Emily Emma Eric Frank George Helen Jacob James Jason Jennifer Jessica Joseph Joshua
   Karen Kevin Kimberly Laura Linda Lisa Margaret Mary Matthew Michael Michelle Nancy Nicholas Olivia Patricia
@@ -352,7 +352,47 @@
     "cataract",
     "sickle cell",
     "thalassemia",
-    "hemophilia"
+    "hemophilia",
+    "liver problem",
+    "liver disease",
+    "liver failure",
+    "liver infection",
+    "liver damage",
+    "liver condition",
+    "kidney problem",
+    "heart problem",
+    "lung problem",
+    "stomach problem",
+    "chest pain",
+    "jaundice",
+    "pancreatitis",
+    "gallstones?",
+    "kidney stones?",
+    "fever",
+    "high fever",
+    "headache",
+    "fatigue",
+    "nausea",
+    "vomiting",
+    "diarrhoea",
+    "diarrhea",
+    "constipation",
+    "sore throat",
+    "flu",
+    "influenza",
+    "cold and cough",
+    "cough",
+    "shortness of breath",
+    "vertigo",
+    "dizziness",
+    "rashes",
+    "skin rash",
+    "back pain",
+    "joint pain",
+    "gastritis",
+    "acid reflux",
+    "gerd",
+    "stomach ache"
   ];
   var MEDICATIONS = [
     "metformin",
@@ -412,6 +452,10 @@
   var MONTHS = new Set(
     w(`January February March April May June July August September October November December`)
   );
+  var FIRST_NAMES_LOWER = /* @__PURE__ */ new Set();
+  for (const n of FIRST_NAMES) FIRST_NAMES_LOWER.add(n.toLowerCase());
+  var SURNAMES_LOWER = /* @__PURE__ */ new Set();
+  for (const n of SURNAMES) SURNAMES_LOWER.add(n.toLowerCase());
 
   // src/core/validators.ts
   function luhnValid(digits) {
@@ -1140,69 +1184,143 @@
   function isNameish(word) {
     return !STOP_WORDS.has(word) && !MONTHS.has(word) && !/(?:ing|ly|ed)$/.test(word);
   }
-  function trimToNames(seq) {
-    const words = seq.split(/\s+/);
+  var AMBIGUOUS_LOWER_NAMES = /* @__PURE__ */ new Set([
+    "will",
+    "may",
+    "mark",
+    "rob",
+    "bill",
+    "art",
+    "guy",
+    "pat",
+    "van",
+    "rose",
+    "grace",
+    "faith",
+    "joy",
+    "hope",
+    "dawn",
+    "ray",
+    "gene",
+    "dean",
+    "grant",
+    "miles",
+    "dale",
+    "glen",
+    "wade",
+    "lane",
+    "chase",
+    "drew",
+    "reed",
+    "cole",
+    "troy",
+    "blake",
+    "clark",
+    "bruce",
+    "craig",
+    "kent",
+    "cliff",
+    "ford",
+    "ross",
+    "robin",
+    "penny",
+    "crystal",
+    "amber",
+    "holly",
+    "summer",
+    "autumn",
+    "april",
+    "june",
+    "august",
+    "major"
+  ]);
+  function isKnownFirstName(word) {
+    if (!word || word.length < 2) return false;
+    if (FIRST_NAMES.has(word)) return true;
+    const lower = word.toLowerCase();
+    if (AMBIGUOUS_LOWER_NAMES.has(lower)) return false;
+    return FIRST_NAMES_LOWER.has(lower);
+  }
+  function isKnownSurname(word) {
+    if (!word || word.length < 2) return false;
+    if (SURNAMES.has(word)) return true;
+    return SURNAMES_LOWER.has(word.toLowerCase());
+  }
+  function extractNameAt(text, start, allowLower = false) {
+    const sub = text.slice(start);
+    const m = sub.match(/^[a-zA-Z][a-zA-Z'\u2019-]*(?:\s+[a-zA-Z][a-zA-Z'\u2019-]*){0,2}/);
+    if (!m) return "";
+    const words = m[0].split(/\s+/);
     const kept = [];
     for (const wd of words) {
-      if (!isNameish(wd)) break;
+      const lower = wd.toLowerCase();
+      const cap = lower[0].toUpperCase() + lower.slice(1);
+      if (STOP_WORDS.has(wd) || STOP_WORDS.has(cap)) break;
+      if (MONTHS.has(wd) || MONTHS.has(cap)) break;
+      if (/(?:ing|ly|ed)$/i.test(wd) && !isKnownFirstName(wd)) break;
+      if (!allowLower && !/^[A-Z]/.test(wd)) break;
       kept.push(wd);
     }
     return kept.join(" ");
-  }
-  function nameAt(text, start) {
-    NAME_SEQ.lastIndex = start;
-    const n = NAME_SEQ.exec(text);
-    return n ? trimToNames(n[0]) : "";
   }
   var RELATIONS = "wife|husband|son|daughter|mother|mom|mum|father|dad|brother|sister|sibling|friend|best friend|boss|manager|colleague|coworker|co-worker|teammate|partner|fianc[e\xE9]e?|girlfriend|boyfriend|uncle|aunt|cousin|nephew|niece|grandmother|grandfather|grandma|grandpa|granny|neighbou?r|landlord|landlady|tenant|roommate|flatmate|client|patient|doctor|dentist|therapist|lawyer|attorney|accountant|teacher|tutor|professor|student|assistant|secretary|nanny|maid|driver|kid|child|baby|toddler|stepson|stepdaughter|ex|ex-wife|ex-husband|in-law|mother-in-law|father-in-law|spouse";
   var PERSON_NOUN = /\b(?:guy|man|woman|girl|boy|person|patient|friend|someone|somebody|kid|child|son|daughter|lady|gentleman|employee|customer|user|client|colleague|doctor|nurse|teacher|student|candidate|applicant|baby|dog|cat)\b/i;
   function detectPersons(text) {
     const out = [];
-    for (const m of text.matchAll(/\b(?:Mr|Mrs|Ms|Mx|Miss|Dr|Shri|Smt|Kumari|Prof|Sir|Sri|Herr|Frau|Mme|Mlle|Mister|Madam|Capt|Lt|Sgt)\.?\s+(?=[A-Z])/g)) {
+    for (const m of text.matchAll(/\b(?:Mr|Mrs|Ms|Mx|Miss|Dr|Shri|Smt|Kumari|Prof|Sir|Sri|Herr|Frau|Mme|Mlle|Mister|Madam|Capt|Lt|Sgt)\.?\s*[-:=]?\s*(?=[a-zA-Z])/gi)) {
       const start = m.index + m[0].length;
-      const name = nameAt(text, start);
+      const name = extractNameAt(text, start, true);
       if (!name) continue;
       out.push(mk("PERSON", start, start + name.length, name, 0.88, "heuristic", "Name after a title (Mr./Dr./Shri ...)"));
     }
-    const STRONG = /\b(?:my name is|my name's|name is|i am called|i'm called|call me|(?:patient|employee|customer|client|user|contact|applicant|candidate|student|account holder|cardholder|card holder|beneficiary|nominee|guardian)(?: full)? name\s*(?:is|[:=-])|(?:full |first |last |legal )?name\s*[:=-]|patient\s*[:=-]|employee\s*[:=-]|customer\s*[:=-]|signed\s*[:=-])\s*/gi;
-    const WEAK = /\b(?:i am|i'm|this is|hi|hello|hey|dear|regards,?|thanks,?|thank you,?|sincerely,?|cheers,|best,|yours,|warmly,|respectfully,|love,|signed(?: by)?|patient|employee|customer|client|applicant|candidate|with|met|meet|told|asked|cc|attn:?)\s+/gi;
+    const STRONG = /\b(?:my(?:\s+full|\s+first)?\s+name\s*(?:is\s*[-:=]?|'s|[:=-]|\s*[-:=]?)|(?:patient|employee|customer|client|user|contact|applicant|candidate|student|account holder|cardholder|beneficiary|nominee|guardian)(?: full)? name\s*(?:is\s*[-:=]?|[:=-]|\s*[-:=]?)|(?:full |first |last |legal )?name\s*[:=-]|patient\s*[:=-]|employee\s*[:=-]|customer\s*[:=-]|signed\s*[:=-]|call\s+me\s+)\s*/gi;
+    const WEAK = /\b(?:i am called|i'm called|\bim\s+called\b|i am|i'm|\bim\b|myself|this is|hi\s+(?:i am|i'm|\bim\b)|hello\s+(?:i am|i'm|\bim\b)|hey\s+(?:i am|i'm|\bim\b)|hi|hello|hey|dear|regards,?|thanks,?|thank you,?|sincerely,?|cheers,|best,|yours,|warmly,|respectfully,|love,|signed(?: by)?|patient|employee|customer|client|applicant|candidate|with|met|meet|told|asked|cc|attn:?)\s*[-:=]?\s*/gi;
     for (const [re, strong] of [[STRONG, true], [WEAK, false]]) {
       for (const m of text.matchAll(re)) {
         const start = m.index + m[0].length;
-        const name = nameAt(text, start);
+        const name = extractNameAt(text, start, true);
         if (!name) continue;
         const words = name.split(" ");
-        const known = FIRST_NAMES.has(words[0]);
+        const isTitleCase = words.every((w3) => /^[A-Z][a-z]+/.test(w3));
+        const known = isKnownFirstName(words[0]);
+        if (!known && !isTitleCase) continue;
         if (strong) {
-          out.push(mk("PERSON", start, start + name.length, name, known ? 0.92 : 0.8, "heuristic", "Name introduced by a cue phrase"));
-        } else if (known || words.length >= 2 && SURNAMES.has(words[words.length - 1])) {
-          out.push(mk("PERSON", start, start + name.length, name, known ? 0.82 : 0.7, "heuristic", "Name following a greeting or role word"));
-        } else if (words.length >= 2 && !/\b(?:with|met|meet|told|asked)\s+$/i.test(m[0])) {
-          out.push(mk("PERSON", start, start + name.length, name, 0.66, "heuristic", "Name following a greeting or role word"));
+          out.push(mk("PERSON", start, start + name.length, name, known ? 0.94 : 0.85, "heuristic", "Name introduced by a cue phrase"));
+        } else if (known || words.length >= 2 && isKnownSurname(words[words.length - 1])) {
+          out.push(mk("PERSON", start, start + name.length, name, known ? 0.9 : 0.76, "heuristic", "Name following a greeting or role word"));
+        } else if (words.length >= 2 && !/\b(?:with|met|meet|told|asked)\s*[-:=]?\s*$/i.test(m[0])) {
+          out.push(mk("PERSON", start, start + name.length, name, 0.68, "heuristic", "Name following a greeting or role word"));
         }
       }
     }
-    for (const m of text.matchAll(new RegExp(`\\b(?:my|our|his|her|their|your)\\s+(?:${RELATIONS})(?:'s name is|,| named| called| is)?\\s+(?=[A-Z])`, "gi"))) {
+    const REL_RE = new RegExp(
+      `\\b(?:my|our|his|her|their|your)?\\s*(?:${RELATIONS})\\s*(?:(?:'s)?\\s*(?:full |first |last )?name\\s*(?:is\\s*[-:=]?|[:=-])?|(?:'s)?\\s*(?:is|was)\\s*[-:=]?|named|called|[:=-])\\s*`,
+      "gi"
+    );
+    for (const m of text.matchAll(REL_RE)) {
       const start = m.index + m[0].length;
-      const name = nameAt(text, start);
+      const name = extractNameAt(text, start, true);
       if (!name) continue;
-      const known = FIRST_NAMES.has(name.split(" ")[0]);
-      out.push(mk("PERSON", start, start + name.length, name, known ? 0.88 : 0.76, "heuristic", "Name after a relationship word"));
+      const words = name.split(" ");
+      const isTitleCase = words.every((w3) => /^[A-Z][a-z]+/.test(w3));
+      const known = isKnownFirstName(words[0]);
+      if (!known && !isTitleCase) continue;
+      out.push(mk("PERSON", start, start + name.length, name, known ? 0.92 : 0.8, "heuristic", "Name after a relationship word"));
     }
-    for (const m of text.matchAll(/\b(?:named|called|nicknamed|aka|a\.k\.a\.)\s+(?=[A-Z])/g)) {
+    for (const m of text.matchAll(/\b(?:named|called|nicknamed|aka|a\.k\.a\.)\s*[-:=]?\s*(?=[a-zA-Z])/gi)) {
       const start = m.index + m[0].length;
-      const name = nameAt(text, start);
+      const name = extractNameAt(text, start, true);
       if (!name) continue;
-      const known = FIRST_NAMES.has(name.split(" ")[0]);
+      const known = isKnownFirstName(name.split(" ")[0]);
       const personish = near(text, m.index, m.index, PERSON_NOUN, 30);
       if (!known && !personish) continue;
-      out.push(mk("PERSON", start, start + name.length, name, known ? 0.86 : 0.74, "heuristic", 'Name after "named" / "called"'));
+      out.push(mk("PERSON", start, start + name.length, name, known ? 0.88 : 0.74, "heuristic", 'Name after "named" / "called"'));
     }
-    for (const m of text.matchAll(/^[ \t>]*(?:From|To|Cc|Bcc|Reply-To|Sender|Attn|Attention)\s*:\s*"?([A-Z][A-Za-z'\u2019.-]+(?:\s+[A-Z][A-Za-z'\u2019.-]+){0,3})"?\s*(?=<|,|;|$)/gm)) {
+    for (const m of text.matchAll(/^[ \t>]*(?:From|To|Cc|Bcc|Reply-To|Sender|Attn|Attention)\s*:\s*"?([A-Za-z'\u2019.-]+(?:\s+[A-Za-z'\u2019.-]+){0,3})"?\s*(?=<|,|;|$)/gm)) {
       const name = m[1].trim();
       const start = m.index + m[0].indexOf(name);
       const words = name.split(/\s+/);
-      if (words.length < 2 && !FIRST_NAMES.has(words[0])) continue;
+      if (words.length < 2 && !isKnownFirstName(words[0])) continue;
       out.push(mk("PERSON", start, start + name.length, name, 0.86, "heuristic", "Name in an email header"));
     }
     for (const m of text.matchAll(/\b([A-Z][a-z]+)\b(?=(?:[ \t]+([A-Z][a-z]+(?:-[A-Z][a-z]+)?)\b)?)/g)) {
@@ -1218,14 +1336,25 @@
         out.push(mk("PERSON", m.index, m.index + first.length, first, 0.6, "heuristic", "Common first name"));
       }
     }
+    for (const m of text.matchAll(/\b([a-z]{2,})\b(?=(?:[ \t]+([a-z]{2,}(?:-[a-z]{2,})?)\b)?)/g)) {
+      const first = m[1];
+      if (!isKnownFirstName(first)) continue;
+      const second = m[2];
+      if (second && (isKnownSurname(second) || isKnownFirstName(second))) {
+        const full = text.slice(m.index, text.indexOf(second, m.index + first.length) + second.length);
+        out.push(mk("PERSON", m.index, m.index + full.length, full, 0.88, "heuristic", "Common first name followed by a surname"));
+      } else if (near(text, m.index, m.index + first.length, /\b(?:hi|hello|hey|dear|i am|i'm|name|doctor|dr|patient|mr|mrs|ms)\b/i, 30)) {
+        out.push(mk("PERSON", m.index, m.index + first.length, first, 0.72, "heuristic", "Common first name near greeting or cue"));
+      }
+    }
     const seen = /* @__PURE__ */ new Set();
     for (const d of out.slice()) {
       if (d.confidence < 0.6) continue;
       for (const word of d.text.split(/\s+/)) {
-        if (word.length < 3 || !isNameish(word) || seen.has(word)) continue;
-        seen.add(word);
-        for (const m of text.matchAll(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"))) {
-          out.push(mk("PERSON", m.index, m.index + word.length, word, 0.74, "heuristic", "Repeat mention of a detected name"));
+        if (word.length < 3 || !isNameish(word) || seen.has(word.toLowerCase())) continue;
+        seen.add(word.toLowerCase());
+        for (const m of text.matchAll(new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi"))) {
+          out.push(mk("PERSON", m.index, m.index + word.length, m[0], 0.74, "heuristic", "Repeat mention of a detected name"));
         }
       }
     }
@@ -1236,13 +1365,31 @@
     `\\b(?:${MEDICATIONS.join("|")})\\b(?:\\s+\\d+(?:\\.\\d+)?\\s?(?:mg|mcg|g|ml|iu|units))?`,
     "gi"
   );
+  var BODY_ORGANS = "liver|kidney|heart|cardiac|lung|pulmonary|brain|spine|spinal|stomach|gastric|gastro|bowel|colon|prostate|breast|thyroid|blood|bone|joint|skin|eye|vision|ear|hearing|throat|mental|pancreatic|pancreas|gallbladder|urinary|bladder|renal|hepatic|chest|back|neck|abdomen|abdominal|pelvic";
+  var HEALTH_ISSUES = "problem|problems|issue|issues|disease|diseases|disorder|disorders|infection|infections|failure|damage|condition|conditions|illness|illnesses|complication|complications|cancer|cancers|tumor|tumors|tumour|tumours|syndrome|syndromes|inflammation|pain|deficiency|attack|attacks|surgery|surgeries|transplant|biopsy|cyst|cysts|stone|stones";
+  var ORGAN_HEALTH_RE = new RegExp(`\\b(?:${BODY_ORGANS})\\s+(?:${HEALTH_ISSUES})\\b`, "gi");
+  var SPECIALIST_RE = new RegExp(
+    `\\b(?:${BODY_ORGANS})\\s+(?:doctor|specialist|physician|surgeon|consultant)\\b|\\b(?:oncologist|cardiologist|hepatologist|nephrologist|dermatologist|psychiatrist|neurologist|gastroenterologist|urologist|endocrinologist|rheumatologist|orthopedic|gynecologist|pulmonologist|pediatrician)\\b`,
+    "gi"
+  );
+  var SYMPTOM_STATEMENT_RE = /\b(?:i have|i'm having|i am having|suffering from|diagnosed with|treatment for|treated for|experiencing|struggling with|history of|recovering from)\s+(?:an?\s+|the\s+)?([a-z]+(?:\s+[a-z]+){0,2}\s+(?:problem|issue|disease|disorder|infection|failure|condition|pain|syndrome|illness))/gi;
   function detectMedical(text) {
     const out = [];
     for (const m of text.matchAll(CONDITION_RE)) {
-      out.push(mk("MEDICAL", m.index, m.index + m[0].length, m[0], 0.82, "heuristic", "Known medical condition", "MEDICAL_CONDITION"));
+      out.push(mk("MEDICAL", m.index, m.index + m[0].length, m[0], 0.85, "heuristic", "Known medical condition", "MEDICAL_CONDITION"));
     }
     for (const m of text.matchAll(MED_RE)) {
-      out.push(mk("MEDICAL", m.index, m.index + m[0].length, m[0], 0.82, "heuristic", "Known medication", "MEDICATION"));
+      out.push(mk("MEDICAL", m.index, m.index + m[0].length, m[0], 0.85, "heuristic", "Known medication", "MEDICATION"));
+    }
+    for (const m of text.matchAll(ORGAN_HEALTH_RE)) {
+      out.push(mk("MEDICAL", m.index, m.index + m[0].length, m[0], 0.88, "heuristic", "Organ or bodily health condition", "MEDICAL_CONDITION"));
+    }
+    for (const m of text.matchAll(SPECIALIST_RE)) {
+      out.push(mk("MEDICAL", m.index, m.index + m[0].length, m[0], 0.84, "heuristic", "Medical specialist or clinical specialty", "MEDICAL_SPECIALIST"));
+    }
+    for (const m of text.matchAll(SYMPTOM_STATEMENT_RE)) {
+      const [s, e] = m.indices ? m.indices[1] : [m.index + m[0].indexOf(m[1]), m.index + m[0].indexOf(m[1]) + m[1].length];
+      out.push(mk("MEDICAL", s, e, m[1], 0.84, "heuristic", "Health symptom or problem statement", "MEDICAL_CONDITION"));
     }
     const cue = new RegExp("\\b(?:diagnosed with|diagnosis of|suffering from|suffers from|history of|treated for|symptoms of|tested positive for|prescribed)\\s+((?:an?\\s+|the\\s+)?[a-z][a-z-]*(?:\\s+[a-z][a-z-]*){0,2})", "gid");
     for (const m of text.matchAll(cue)) {
@@ -1252,7 +1399,7 @@
       if (!phrase) continue;
       s = m.index + m[0].indexOf(phrase);
       e = s + phrase.length;
-      out.push(mk("MEDICAL", s, e, phrase, 0.66, "heuristic", "Health condition after a diagnosis cue", "MEDICAL_CONDITION"));
+      out.push(mk("MEDICAL", s, e, phrase, 0.72, "heuristic", "Health condition after a diagnosis cue", "MEDICAL_CONDITION"));
     }
     for (const m of text.matchAll(/\b(?:hba1c|blood sugar|glucose|bp|blood pressure|cholesterol|creatinine|hemoglobin|haemoglobin|ldl|hdl|tsh|psa|bmi)\s*(?:is|was|of|:|=|level)?\s*\d+(?:[./]\d+)?(?:\s?(?:mg\/dl|mmhg|mmol\/l|g\/dl|%))?/gi)) {
       if (!/\d/.test(m[0])) continue;
@@ -2194,27 +2341,27 @@
   var PERSONAL = {
     id: "personal",
     name: "Personal",
-    description: "Everyday use. Hides identity and account numbers, keeps the rest so answers stay useful.",
+    description: "Everyday use. Replaces names, emails, phones, and identifiers with natural synthetic surrogates, keeping context useful.",
     threshold: 0.5,
     rules: build({
-      PERSON: "TOKENIZE",
-      EMAIL: "MASK",
-      PHONE: "MASK",
-      CREDIT_CARD: "MASK",
+      PERSON: "SYNTHESIZE",
+      EMAIL: "SYNTHESIZE",
+      PHONE: "SYNTHESIZE",
+      CREDIT_CARD: "SYNTHESIZE",
       BANK_ACCOUNT: "MASK",
       IBAN: "MASK",
-      UPI_ID: "MASK",
+      UPI_ID: "SYNTHESIZE",
       IFSC: "REDACT",
-      AADHAAR: "REDACT",
-      PAN: "REDACT",
-      ID_NUMBER: "REDACT",
+      AADHAAR: "SYNTHESIZE",
+      PAN: "SYNTHESIZE",
+      ID_NUMBER: "SYNTHESIZE",
       ROUTING_NUMBER: "MASK",
       PASSPORT: "REDACT",
       DATE_OF_BIRTH: "GENERALIZE",
-      IP_ADDRESS: "REDACT",
-      EMPLOYEE_ID: "REDACT",
+      IP_ADDRESS: "SYNTHESIZE",
+      EMPLOYEE_ID: "SYNTHESIZE",
       CONFIDENTIAL: "TOKENIZE",
-      MEDICAL: "KEEP",
+      MEDICAL: "SYNTHESIZE",
       FINANCIAL: "KEEP",
       AGE: "KEEP",
       LOCATION: "KEEP",
@@ -2432,7 +2579,8 @@
     MASK: 0.25,
     TOKENIZE: 0.1,
     REDACT: 0,
-    REMOVE_SECRET: 0
+    REMOVE_SECRET: 0,
+    SYNTHESIZE: 0.1
   };
   function weightOf(type, label) {
     if (label && label in LABEL_WEIGHT) return LABEL_WEIGHT[label];
@@ -2482,6 +2630,161 @@
     }
     return Math.max(0, Math.min(100, Math.round(100 * (1 - keep))));
   }
+
+  // src/core/vault.ts
+  var SYNTHETIC_NAME_PAIRS = [
+    { first: "Arjun", last: "Patel" },
+    { first: "Sanjay", last: "Verma" },
+    { first: "Vikram", last: "Singh" },
+    { first: "Alex", last: "Morgan" },
+    { first: "Jordan", last: "Lee" },
+    { first: "Samira", last: "Khan" },
+    { first: "Elena", last: "Rostova" },
+    { first: "Marcus", last: "Vance" },
+    { first: "Chloe", last: "Bennett" },
+    { first: "Devon", last: "Chen" }
+  ];
+  var SYNTHETIC_ORGS = [
+    "Apex Healthcare Center",
+    "Nexus Global Dynamics",
+    "Beacon Enterprises",
+    "Acme Technologies",
+    "Horizon Solutions"
+  ];
+  var SYNTHETIC_CITIES = ["Greenville", "Riverdale", "Springfield", "Brookfield", "Fairview"];
+  var SyntheticGenerator = class {
+    constructor() {
+      __publicField(this, "cache", /* @__PURE__ */ new Map());
+      __publicField(this, "subMap", /* @__PURE__ */ new Map());
+      __publicField(this, "counter", 0);
+    }
+    generate(type, original) {
+      const key = `${type}:${original.toLowerCase().trim()}`;
+      const cached = this.cache.get(key);
+      if (cached) return cached;
+      const idx = this.counter++;
+      let result = "";
+      switch (type) {
+        case "PERSON": {
+          const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+          const words = original.trim().split(/\s+/);
+          const isLower = original === original.toLowerCase();
+          if (words.length === 1) {
+            result = isLower ? pair.first.toLowerCase() : pair.first;
+            this.subMap.set(result, original);
+            this.subMap.set(pair.first, original);
+            this.subMap.set(pair.first.toLowerCase(), original);
+          } else {
+            result = isLower ? `${pair.first.toLowerCase()} ${pair.last.toLowerCase()}` : `${pair.first} ${pair.last}`;
+            this.subMap.set(result, original);
+            this.subMap.set(`${pair.first} ${pair.last}`, original);
+            this.subMap.set(pair.first, words[0]);
+            this.subMap.set(pair.first.toLowerCase(), words[0]);
+            this.subMap.set(pair.last, words[words.length - 1]);
+            this.subMap.set(pair.last.toLowerCase(), words[words.length - 1]);
+          }
+          break;
+        }
+        case "EMAIL": {
+          const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+          const domain = original.includes("@") ? original.slice(original.indexOf("@") + 1) : "gmail.com";
+          result = `${pair.first.toLowerCase()}.${pair.last.toLowerCase()}@${domain}`;
+          this.subMap.set(result, original);
+          break;
+        }
+        case "PHONE": {
+          const digits = original.replace(/\D/g, "");
+          if (original.includes("+91")) {
+            result = `+91 91234 ${String(56789 + idx).slice(-5)}`;
+          } else if (original.includes("+1") || /\(\d{3}\)/.test(original)) {
+            result = `+1 (555) 010-${String(1e3 + idx % 9e3).slice(-4)}`;
+          } else if (digits.length === 10) {
+            result = original.includes(" ") || original.includes("-") ? `91234 ${String(56789 + idx).slice(-5)}` : `91234${String(56789 + idx).slice(-5)}`;
+          } else if (digits.length === 8) {
+            result = `9123${String(4567 + idx).slice(-4)}`;
+          } else {
+            result = `+1 (555) 010-${String(1e3 + idx % 9e3).slice(-4)}`;
+          }
+          this.subMap.set(result, original);
+          break;
+        }
+        case "MEDICAL": {
+          const lower = original.toLowerCase();
+          if (/doctor|specialist|physician|surgeon|consultant|oncologist|cardiologist/i.test(lower)) {
+            result = "general physician";
+          } else if (/fever|cough|cold|infection|allergy|flu/i.test(lower)) {
+            result = "mild seasonal allergy";
+          } else if (/problem|issue|disease|disorder|failure|pain|condition|damage|attack/i.test(lower)) {
+            result = "general health issue";
+          } else if (/paracetamol|metformin|aspirin|insulin|tablet|medicine|medication/i.test(lower)) {
+            result = "multivitamin supplement";
+          } else {
+            result = "routine checkup consultation";
+          }
+          this.subMap.set(result, original);
+          break;
+        }
+        case "UPI_ID": {
+          const pair = SYNTHETIC_NAME_PAIRS[idx % SYNTHETIC_NAME_PAIRS.length];
+          const handle = original.includes("@") ? original.slice(original.indexOf("@")) : "@okaxis";
+          result = `${pair.first.toLowerCase()}${10 + idx}${handle}`;
+          this.subMap.set(result, original);
+          break;
+        }
+        case "CREDIT_CARD":
+          result = "4000 1234 5678 9010";
+          this.subMap.set(result, original);
+          break;
+        case "AADHAAR":
+          result = "9123 4567 8901";
+          this.subMap.set(result, original);
+          break;
+        case "PAN":
+          result = "ABCDE1234F";
+          this.subMap.set(result, original);
+          break;
+        case "ORGANIZATION":
+          result = SYNTHETIC_ORGS[idx % SYNTHETIC_ORGS.length];
+          this.subMap.set(result, original);
+          break;
+        case "LOCATION":
+          result = SYNTHETIC_CITIES[idx % SYNTHETIC_CITIES.length];
+          this.subMap.set(result, original);
+          break;
+        case "IP_ADDRESS":
+          result = `192.0.2.${idx % 250 + 1}`;
+          this.subMap.set(result, original);
+          break;
+        case "DATE_OF_BIRTH":
+          result = "1990-01-01";
+          this.subMap.set(result, original);
+          break;
+        case "AGE":
+          result = "30";
+          this.subMap.set(result, original);
+          break;
+        default:
+          result = `[SYNTHETIC_${type}_${idx + 1}]`;
+          this.subMap.set(result, original);
+          break;
+      }
+      this.cache.set(key, result);
+      return result;
+    }
+    /** Returns all active mappings including full and sub-name mappings. */
+    getAllMappings() {
+      const res = {};
+      for (const [synth, orig] of this.subMap.entries()) {
+        res[synth] = orig;
+      }
+      return res;
+    }
+    reset() {
+      this.cache.clear();
+      this.subMap.clear();
+      this.counter = 0;
+    }
+  };
 
   // src/core/sanitize.ts
   function labelOf(d) {
@@ -2620,6 +2923,9 @@
       this.map[tok] = d.text;
       return tok;
     }
+    record(token, original) {
+      this.map[token] = original;
+    }
     next(label) {
       const count = (this.counters.get(label) ?? 0) + 1;
       this.counters.set(label, count);
@@ -2644,18 +2950,32 @@
     }
     return action;
   }
-  function replacementFor(d, action, tk) {
+  function replacementFor(d, action, tk, syn) {
     switch (action) {
       case "KEEP":
         return d.text;
-      case "MASK":
-        return maskValue(d);
+      case "MASK": {
+        const masked = maskValue(d);
+        tk.record(masked, d.text);
+        return masked;
+      }
       case "TOKENIZE":
         return tk.token(d);
-      case "REDACT":
-        return `[REDACTED_${labelOf(d)}]`;
-      case "GENERALIZE":
-        return generalizeValue(d) ?? `[REDACTED_${labelOf(d)}]`;
+      case "SYNTHESIZE": {
+        const synth = syn.generate(d.type, d.text);
+        tk.record(synth, d.text);
+        return synth;
+      }
+      case "REDACT": {
+        const redacted = `[REDACTED_${labelOf(d)}]`;
+        tk.record(redacted, d.text);
+        return redacted;
+      }
+      case "GENERALIZE": {
+        const generalized = generalizeValue(d) ?? `[REDACTED_${labelOf(d)}]`;
+        tk.record(generalized, d.text);
+        return generalized;
+      }
       case "REMOVE_SECRET":
         return "[SECRET_REMOVED]";
     }
@@ -2663,13 +2983,14 @@
   function evaluate(text, detections, profile, mode, overrides = {}) {
     const sorted = [...detections].sort((a, b) => a.start - b.start);
     const tk = new Tokenizer();
+    const syn = new SyntheticGenerator();
     const findings = [];
     let out = "";
     let cursor = 0;
     for (const d of sorted) {
       if (d.start < cursor) continue;
       const action = decideAction(d, profile, overrides[d.id]);
-      const replacement = replacementFor(d, action, tk);
+      const replacement = replacementFor(d, action, tk, syn);
       out += text.slice(cursor, d.start) + replacement;
       cursor = d.end;
       findings.push({ ...d, action, replacement, applied: action !== "KEEP" });
@@ -2697,7 +3018,7 @@
       levelAfter: riskLevel(riskAfter),
       mode,
       profileId: profile.id,
-      tokenMap: tk.map
+      tokenMap: { ...syn.getAllMappings(), ...tk.map }
     };
   }
 
