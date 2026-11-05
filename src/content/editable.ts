@@ -215,30 +215,129 @@ export function visibleBox(el: HTMLElement): Box {
 
 function looksLikeCard(cs: CSSStyleDeclaration): boolean {
   const radius = parseFloat(cs.borderTopLeftRadius) || 0;
-  if (radius < 10) return false;
+  if (radius >= 12) return true;
   const bg = cs.backgroundColor;
   const hasBg = !!bg && bg !== 'transparent' && !/^rgba\(\s*0,\s*0,\s*0,\s*0\s*\)$/.test(bg);
   const hasBorder = (parseFloat(cs.borderTopWidth) || 0) > 0 && cs.borderTopStyle !== 'none';
   const hasShadow = !!cs.boxShadow && cs.boxShadow !== 'none';
-  return hasBg || hasBorder || hasShadow;
+  if (radius >= 6 && (hasBg || hasBorder || hasShadow)) return true;
+  return (hasBorder && hasBg) || (hasShadow && hasBg);
+}
+
+/**
+ * Visual envelope thresholds: AI chat composer capsules (Gemini, Grok, ChatGPT, Claude,
+ * Perplexity, Copilot, Mistral) wrap the text input with adjacent controls:
+ * - Attachment [+] button on the left (up to ~100px)
+ * - Model selector, mic, and submit buttons on the right (up to ~240px)
+ * - Padding/small headers on top (up to ~50px)
+ * - Toolbar rows below (up to ~85px)
+ *
+ * Any container exceeding ANY of these bounds is a page-level column, main content wrapper,
+ * chat stream, or footer disclaimer — NOT the composer capsule.
+ */
+const MAX_DELTA_LEFT = 100;
+const MAX_DELTA_RIGHT = 240;
+const MAX_DELTA_TOP = 50;
+const MAX_DELTA_BOTTOM = 85;
+
+function isChatGptHost(): boolean {
+  try {
+    const h = window.location.hostname;
+    return (
+      h === 'chatgpt.com' ||
+      h.endsWith('.chatgpt.com') ||
+      h === 'chat.openai.com' ||
+      h.endsWith('.openai.com')
+    );
+  } catch {
+    return false;
+  }
 }
 
 /**
  * The box the shield should sit on. Chat sites wrap the editor in a rounded "composer" card that also
  * holds the + button, mic and send button. Anchoring to that card (not the narrower editor inside it)
- * keeps the shield at the composer's edge. Falls back to the visible part of the editor.
+ * keeps the shield at the composer's edge. Falls back safely to the editor itself.
  */
 export function anchorBox(el: HTMLElement): Box {
   const inner = visibleBox(el);
+
+  // Rollback to original anchor logic specifically for ChatGPT where it was already working
+  if (isChatGptHost()) {
+    let p = parentOf(el);
+    for (let depth = 0; p && depth < 8; depth++) {
+      if (p === document.body || p === document.documentElement) break;
+      const r = p.getBoundingClientRect();
+      if (r.height > window.innerHeight * 0.7 || r.width > window.innerWidth * 0.98) break;
+      const cs = getComputedStyle(p);
+      const radius = parseFloat(cs.borderTopLeftRadius) || 0;
+      const bg = cs.backgroundColor;
+      const hasBg = !!bg && bg !== 'transparent' && !/^rgba\(\s*0,\s*0,\s*0,\s*0\s*\)$/.test(bg);
+      const hasBorder = (parseFloat(cs.borderTopWidth) || 0) > 0 && cs.borderTopStyle !== 'none';
+      const hasShadow = !!cs.boxShadow && cs.boxShadow !== 'none';
+      if (
+        r.width >= inner.width - 1 &&
+        r.height >= inner.height - 1 &&
+        radius >= 10 &&
+        (hasBg || hasBorder || hasShadow)
+      ) {
+        return intersect(toBox(r), toBox({ top: -1e6, left: 0, right: window.innerWidth, bottom: window.innerHeight }));
+      }
+      p = parentOf(p);
+    }
+    return inner;
+  }
+
+  // Bounded proximity capsule detection for Grok, Gemini, and other modern AI composers
+  let best: Box | null = null;
   let p = parentOf(el);
-  for (let depth = 0; p && depth < 8; depth++) {
+
+  for (let depth = 0; p && depth < 14; depth++) {
     if (p === document.body || p === document.documentElement) break;
     const r = p.getBoundingClientRect();
-    if (r.height > window.innerHeight * 0.7 || r.width > window.innerWidth * 0.98) break;
-    if (r.width >= inner.width - 1 && r.height >= inner.height - 1 && looksLikeCard(getComputedStyle(p))) {
-      return intersect(toBox(r), toBox({ top: -1e6, left: 0, right: window.innerWidth, bottom: window.innerHeight }));
+
+    // Visual distance from the inner editable element to the ancestor
+    const deltaLeft = inner.left - r.left;
+    const deltaRight = r.right - inner.right;
+    const deltaTop = inner.top - r.top;
+    const deltaBottom = r.bottom - inner.bottom;
+
+    // Hard layout guard: as soon as an ancestor escapes the composer envelope,
+    // stop climbing further up into page layout structures.
+    if (
+      deltaLeft > MAX_DELTA_LEFT ||
+      deltaRight > MAX_DELTA_RIGHT ||
+      deltaTop > MAX_DELTA_TOP ||
+      deltaBottom > MAX_DELTA_BOTTOM
+    ) {
+      break;
     }
+
+    // Must be at least as large as the inner editor (with 2px tolerance for subpixel rounding)
+    if (r.width >= inner.width - 2 && r.height >= inner.height - 2 && p instanceof HTMLElement) {
+      const cs = getComputedStyle(p);
+      const isCard = looksLikeCard(cs);
+      const isFormOrComposer =
+        p.tagName === 'FORM' ||
+        p.getAttribute('role') === 'region' ||
+        p.getAttribute('role') === 'form';
+
+      if (isCard || isFormOrComposer) {
+        const candidate = toBox(r);
+        // Prefer the wider capsule that encloses the right-hand action controls (model pills, send button)
+        if (!best) {
+          best = candidate;
+        } else if (candidate.right > best.right + 4 || candidate.width > best.width + 4) {
+          best = candidate;
+        }
+      }
+    }
+
     p = parentOf(p);
+  }
+
+  if (best) {
+    return intersect(best, toBox({ top: -1e6, left: 0, right: window.innerWidth, bottom: window.innerHeight }));
   }
   return inner;
 }

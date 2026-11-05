@@ -3,6 +3,8 @@
 // background worker (Smart mode labelling and metadata-only audit entries).
 
 import { analyze, evaluate, quickScan } from '../core/engine';
+import { EncryptedConversationVault, EphemeralVault, extractConversationId, restore } from '../core/vault';
+import { BubblePillManager, USER_BUBBLE_SELECTOR } from './bubble-pill';
 import type { AiEntity, AnalysisResult, Detection, Profile } from '../core/types';
 import type { Override } from '../core/sanitize';
 import {
@@ -60,6 +62,121 @@ interface Session {
   pendingSmart?: boolean;
 }
 
+const sessionVault = new EphemeralVault();
+const encryptedVault = new EncryptedConversationVault();
+const bubblePills = new BubblePillManager();
+let unmaskObserver: MutationObserver | null = null;
+
+function scanAndUnmaskTree(root: Node, map: Record<string, string>, currentEditor?: HTMLElement | null): void {
+  if (!map || Object.keys(map).length === 0) return;
+
+  // Pre-attach pills to identify and tag user turns before text replacement
+  bubblePills.attachPills(map);
+
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let current: Node | null;
+  while ((current = walker.nextNode())) {
+    if (currentEditor && currentEditor.contains(current)) continue;
+    const parent = current.parentElement;
+    if (!parent) continue;
+
+    if (
+      parent.tagName === 'P2SHIELD-HOST' ||
+      parent.closest('p2shield-host') ||
+      parent.classList.contains('p2shield-action-host') ||
+      parent.closest('.p2shield-action-host') ||
+      parent.isContentEditable ||
+      parent.tagName === 'TEXTAREA' ||
+      parent.tagName === 'INPUT' ||
+      parent.closest('[data-p2shield-view="raw"]')
+    ) {
+      continue;
+    }
+
+    // Never unmask user sent bubbles unless inside an assistant response
+    const isAssistant = Boolean(
+      parent.closest(
+        'article:has([data-message-author-role="assistant"]), [data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user), .prose, [class*="prose"], .markdown, [class*="markdown"], [class*="Answer" i], [class*="answer" i], [data-testid*="answer" i], [data-testid*="response" i]',
+      ),
+    );
+
+    if (!isAssistant && (parent.closest(USER_BUBBLE_SELECTOR) || parent.closest('[data-p2shield-user-btn]'))) {
+      continue;
+    }
+
+    const val = current.nodeValue;
+    if (val) {
+      const restored = restore(val, map);
+      if (restored !== val) {
+        const assistantTurn =
+          parent?.closest<HTMLElement>(
+            'article:has([data-message-author-role="assistant"]), [data-message-author-role="assistant"], model-response, [data-testid*="assistant"], .agent-turn, .message-row:not(.user), [class*="prose"], [class*="markdown"], [class*="Answer" i], [class*="answer" i], [data-testid*="answer" i], [data-testid*="response" i]',
+          ) ||
+          parent?.closest<HTMLElement>('div:has(button[aria-label*="Copy" i]):not(:has(button[aria-label*="Edit" i]))') ||
+          parent?.parentElement;
+
+        const resolvedTurn =
+          assistantTurn?.closest<HTMLElement>(
+            'article, model-response, [data-testid*="conversation-turn"], div[class*="Answer" i], div[class*="answer" i], div[data-testid*="answer" i], div[class*="col-span-full"], div:has(> [class*="prose"]), div:has(button[aria-label*="Copy" i]):not(:has(button[aria-label*="Edit" i]))',
+          ) || assistantTurn;
+
+        if (resolvedTurn) {
+          bubblePills.recordAssistantTurn(resolvedTurn, map);
+        }
+        current.nodeValue = restored;
+      }
+    }
+  }
+
+  if ('querySelectorAll' in root) {
+    const all = (root as ParentNode).querySelectorAll('*');
+    for (const el of all) {
+      if (el.shadowRoot) {
+        scanAndUnmaskTree(el.shadowRoot, map, currentEditor);
+      }
+    }
+  }
+
+  // Attach interactive dual-view pills to newly discovered assistant turns
+  bubblePills.attachPills(map);
+}
+
+function enableResponseUnmasking(currentEditor?: HTMLElement | null): void {
+  const map = sessionVault.getActiveMap();
+  if (!map || Object.keys(map).length === 0) return;
+
+  if (document.body) {
+    scanAndUnmaskTree(document.body, map, currentEditor);
+  }
+
+  if (!unmaskObserver && typeof MutationObserver !== 'undefined' && document.body) {
+    unmaskObserver = new MutationObserver(() => {
+      const activeMap = sessionVault.getActiveMap();
+      if (!activeMap || Object.keys(activeMap).length === 0) return;
+      scanAndUnmaskTree(document.body, activeMap, currentEditor);
+    });
+
+    unmaskObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  }
+
+  const interval = window.setInterval(() => {
+    const activeMap = sessionVault.getActiveMap();
+    if (!activeMap || Object.keys(activeMap).length === 0) {
+      window.clearInterval(interval);
+      return;
+    }
+    if (document.body) {
+      scanAndUnmaskTree(document.body, activeMap, currentEditor);
+    }
+  }, 400);
+
+  window.setTimeout(() => window.clearInterval(interval), 30000);
+}
+
 async function start(): Promise<void> {
   let settings: Settings = await loadSettings();
   let profile: Profile = activeProfile(settings);
@@ -93,6 +210,20 @@ async function start(): Promise<void> {
     },
     onUndo: () => void undo(),
     onToggle: (id, protectIt) => void toggle(id, protectIt),
+    onToggleView: () => {
+      if (!session) return;
+      const editor = liveEditor(session.editor);
+      if (!editor) return;
+      const currentText = getText(editor);
+      const isViewingSafe = normalizeForCompare(currentText) === normalizeForCompare(session.lastSafe);
+      const targetText = isViewingSafe ? session.original : session.lastSafe;
+      void write(editor, targetText).then((ok) => {
+        if (ok) {
+          repositionAfterEdit();
+          chipFor(session!, isViewingSafe ? 'original' : 'safe');
+        }
+      });
+    },
   });
 
   const enabled = () => !isSiteDisabled(settings, hostname);
@@ -304,19 +435,23 @@ async function start(): Promise<void> {
   /** How long a click waits for the model before protecting with the rules and refining afterwards. */
   const SMART_GRACE_MS = 700;
 
-  function chipFor(s: Session): void {
+  function chipFor(s: Session, currentView: 'safe' | 'original' = 'safe'): void {
     const applied = s.result.findings.filter((f) => f.applied).length;
     const subParts = [`${s.mode === 'smart' ? 'Smart' : 'Basic'} mode`, `${profile.name} profile`];
     if (s.smartNote) subParts.push(s.smartNote);
     ui.setResult(s.result, profile.name);
     ui.showChip(
       {
-        message: `Protected ${applied} item${applied === 1 ? '' : 's'} · Risk ${s.result.riskBefore} → ${s.result.riskAfter} (${s.result.levelAfter})`,
+        message:
+          currentView === 'safe'
+            ? `Protected ${applied} item${applied === 1 ? '' : 's'} · Risk ${s.result.riskBefore} → ${s.result.riskAfter} (${s.result.levelAfter})`
+            : `Viewing Original (Private) · ${applied} sensitive item${applied === 1 ? '' : 's'} · Risk ${s.result.riskBefore} (${s.result.levelBefore})`,
         sub: subParts.join(' · '),
         undo: true,
         details: true,
+        viewState: currentView,
       },
-      30000,
+      6000,
     );
   }
 
@@ -430,6 +565,14 @@ async function start(): Promise<void> {
       ui.setBadge(0, null);
       repositionAfterEdit();
       audit(result);
+      if (result.tokenMap && Object.keys(result.tokenMap).length > 0) {
+        const convId = extractConversationId(location.href);
+        sessionVault.register(location.href, result.tokenMap);
+        sessionVault.register(convId, result.tokenMap);
+        void encryptedVault.save(convId, result.tokenMap);
+        bubblePills.recordPrompt(text, result.safeText, result.tokenMap);
+        enableResponseUnmasking(editor);
+      }
       if (ok) {
         chipFor(s);
         if (pending) {
@@ -492,6 +635,14 @@ async function start(): Promise<void> {
     s.result = result;
     s.mode = 'smart';
     s.smartNote = extra > 0 ? `AI protected ${extra} more` : extra < 0 ? 'AI kept details needed for your question' : 'AI found nothing extra';
+    if (result.tokenMap && Object.keys(result.tokenMap).length > 0) {
+      const convId = extractConversationId(location.href);
+      sessionVault.register(location.href, result.tokenMap);
+      sessionVault.register(convId, result.tokenMap);
+      void encryptedVault.save(convId, result.tokenMap);
+      bubblePills.recordPrompt(s.original, result.safeText, result.tokenMap);
+      enableResponseUnmasking(s.editor);
+    }
     if (after) chipFor(s);
     else {
       ui.setResult(result, profile.name);
@@ -586,17 +737,107 @@ async function start(): Promise<void> {
   function onInput(e: Event): void {
     if (!current) return;
     const el = resolveEditable(e.composedPath()[0] ?? e.target);
-    if (el === current) scheduleScan();
+    if (el === current) {
+      if (!hasText(current)) {
+        ui.hideChip();
+        ui.closePanel();
+        ui.setBadge(0, null);
+      }
+      scheduleScan();
+    }
+  }
+
+  function onKeyDown(e: KeyboardEvent): void {
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+      ui.hideChip();
+      ui.closePanel();
+    }
+  }
+
+  function onGlobalClick(e: MouseEvent): void {
+    const target = (e.composedPath()[0] ?? e.target) as HTMLElement | undefined;
+    if (
+      target &&
+      (target.closest(
+        'button[aria-label*="Send" i], button[data-testid*="send" i], button[aria-label*="Submit" i], button.send-button, [aria-label*="send message" i]',
+      ) ||
+        target.matches('button[aria-label*="Send" i], button[data-testid*="send" i]'))
+    ) {
+      ui.hideChip();
+      ui.closePanel();
+    }
   }
 
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('pointerdown', onPointerDown, true);
   document.addEventListener('input', onInput, true);
   document.addEventListener('keyup', onInput, true);
+  document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('click', onGlobalClick, true);
   document.addEventListener('paste', () => window.setTimeout(scheduleScan, 50), true);
   window.addEventListener('scroll', reposition, true);
   window.addEventListener('resize', reposition);
-  window.setInterval(reposition, 400);
+  window.setInterval(() => {
+    reposition();
+    void handleLocationChange();
+    bubblePills.attachPills(sessionVault.getActiveMap());
+  }, 400);
+
+  // ---- Encrypted Vault initial restoration (F5 reload) & SPA navigation ----
+  const initialConvId = extractConversationId(location.href);
+  void encryptedVault.load(initialConvId).then((storedMap) => {
+    if (storedMap && Object.keys(storedMap).length > 0) {
+      sessionVault.register(location.href, storedMap);
+      sessionVault.register(initialConvId, storedMap);
+      enableResponseUnmasking();
+    }
+  });
+
+  let lastHref = location.href;
+  let lastConvId = initialConvId;
+
+  async function handleLocationChange(): Promise<void> {
+    if (location.href === lastHref) return;
+    lastHref = location.href;
+    const newConvId = extractConversationId(location.href);
+    if (newConvId === lastConvId) return;
+
+    const oldConvId = lastConvId;
+    lastConvId = newConvId;
+
+    // Migrate tokens if navigating from a root/initial chat prompt to a newly created conversation ID
+    const isInitialChat =
+      oldConvId.endsWith(':/') || oldConvId.endsWith(':/app') || oldConvId.endsWith(':/chat');
+    if (isInitialChat && !newConvId.endsWith(':/') && !newConvId.endsWith(':/app') && !newConvId.endsWith(':/chat')) {
+      await encryptedVault.migrate(oldConvId, newConvId);
+    }
+
+    // Load tokens for the newly active conversation
+    const convTokens = await encryptedVault.load(newConvId);
+    if (convTokens && Object.keys(convTokens).length > 0) {
+      sessionVault.register(location.href, convTokens);
+      sessionVault.register(newConvId, convTokens);
+      enableResponseUnmasking();
+    }
+  }
+
+  // Intercept History API to detect client-side route transitions (ChatGPT, Claude, Gemini, Grok)
+  const origPushState = history.pushState;
+  history.pushState = function (...args) {
+    const res = origPushState.apply(this, args);
+    void handleLocationChange();
+    return res;
+  };
+
+  const origReplaceState = history.replaceState;
+  history.replaceState = function (...args) {
+    const res = origReplaceState.apply(this, args);
+    void handleLocationChange();
+    return res;
+  };
+
+  window.addEventListener('popstate', () => void handleLocationChange());
+  window.addEventListener('hashchange', () => void handleLocationChange());
 
   // Already-focused editor at load time (e.g. autofocus on a chat page).
   const initial = resolveEditable(deepActiveElement());

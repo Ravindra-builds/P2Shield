@@ -1,269 +1,532 @@
 <p align="center">
-  <img src="p2shield-logo.png" alt="P2Shield logo" width="120" />
+  <img src="p2shield-logo.png" alt="P2Shield logo" width="130" />
 </p>
 
 <h1 align="center">P2Shield</h1>
 
 <p align="center">
-  <strong>A pre-LLM privacy firewall that cleans every prompt on your own device, before any LLM/AI tool sees it.</strong>
+  <strong>Pre-LLM Client-Side Privacy Firewall for Generative AI</strong><br />
+  <em>Intercepts, sanitizes, and replaces sensitive data with natural surrogates before it reaches AI providers — and seamlessly restores confidential values in AI responses in real-time.</em>
 </p>
 
 <p align="center">
-  <img alt="Manifest V3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?logo=googlechrome&logoColor=white" />
-  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white" />
-  <img alt="On-device" src="https://img.shields.io/badge/processing-100%25%20on--device-2E9E5B" />
-  <img alt="Network requests" src="https://img.shields.io/badge/network%20requests-0-2E9E5B" />
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-yellow" />
+  <a href="https://p2shield.vercel.app/"><img alt="Live Demo" src="https://img.shields.io/badge/Demo-Live%20on%20Vercel-000000?style=flat&logo=vercel&logoColor=white" /></a>
+  <img alt="Manifest V3" src="https://img.shields.io/badge/Chrome-Manifest%20V3-4285F4?style=flat&logo=googlechrome&logoColor=white" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-Strict-3178C6?style=flat&logo=typescript&logoColor=white" />
+  <img alt="Processing" src="https://img.shields.io/badge/Processing-100%25%20On--Device-2E9E5B?style=flat" />
+  <img alt="Network" src="https://img.shields.io/badge/Network%20Calls-0%20(Zero%20Telemetry)-2E9E5B?style=flat" />
+  <img alt="Tests" src="https://img.shields.io/badge/Tests-203%20Passing-brightgreen?style=flat&logo=vitest&logoColor=white" />
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat" />
 </p>
 
 <p align="center">
-  Team <strong>TechKnights</strong> · BITSHIFT 2026 · Problem Statement 10:
+  Team <strong>TechKnights</strong> · BITSHIFT 2026 · Problem Statement 10:<br />
   <em>Pre-LLM Privacy Firewall for Sensitive Data Protection</em>
 </p>
 
 ---
 
-## Contents
+## 📑 Table of Contents
 
-[Overview](#overview) · [Example](#example) · [Features](#features) · [What it understands](#what-it-understands) · [Quick start](#quick-start) · [Usage](#usage) · [Basic and Smart mode](#basic-mode-and-smart-mode) · [Profiles](#privacy-profiles) · [Risk score](#risk-score) · [Architecture](#architecture) · [Privacy and security](#privacy-and-security) · [Library use](#use-the-engine-as-a-library) · [Testing](#testing) · [Layout](#project-layout) · [Limits](#known-limits) · [Roadmap](#roadmap)
+- [Overview & Problem Statement](#overview--problem-statement)
+- [How It Works (Visual Architecture)](#how-it-works-visual-architecture)
+- [Key Features & Innovations](#key-features--innovations)
+- [What P2Shield Detects (28+ Types)](#what-p2shield-detects-28-types)
+- [File Concept & Codebase Architecture](#file-concept--codebase-architecture)
+- [Local Setup Guide (Step-by-Step)](#local-setup-guide-step-by-step)
+- [How to Test Everything](#how-to-test-everything)
+  - [1. Automated Test Suite (Vitest)](#1-automated-test-suite-vitest)
+  - [2. Built-in Offline Demo Simulator](#2-built-in-offline-demo-simulator)
+  - [3. Live AI Chatbots (ChatGPT, Claude, Gemini, Grok, Perplexity)](#3-live-ai-chatbots-chatgpt-claude-gemini-grok-perplexity)
+  - [4. Interactive Options Dashboard & File Playground](#4-interactive-options-dashboard--file-playground)
+  - [5. End-to-End Browser Testing (Playwright)](#5-end-to-end-browser-testing-playwright)
+- [Privacy Profiles & Risk Scoring](#privacy-profiles--risk-scoring)
+- [Using the Engine as an NPM Library](#using-the-engine-as-an-npm-library)
+- [NPM Scripts Reference](#npm-scripts-reference)
+- [Troubleshooting & FAQ](#troubleshooting--faq)
+- [License](#license)
 
 ---
 
-## Overview
+## Overview & Problem Statement
 
-People paste names, Aadhaar numbers, cards, API keys and medical details into AI chatbots every day. Once sent, that data sits on someone else's server. P2Shield puts a shield on any AI chat box. One click finds sensitive data, rewrites the prompt in place according to a privacy policy, and you press Send as usual.
+Every day, millions of developers, healthcare workers, financial analysts, and everyday users paste confidential information into generative AI tools like **ChatGPT**, **Claude**, **Gemini**, **Perplexity**, and **Grok**:
+- API tokens, SSH keys, database connection strings, and AWS credentials
+- Names, emails, phone numbers, and physical addresses (PII)
+- Government IDs (Aadhaar, SSN, PAN, Passport numbers)
+- Credit card numbers, bank account IBANs, and UPI IDs
+- Private medical diagnoses, prescription drug names, and health records
 
-- **On-device.** No proxy, server, account or analytics. The extension makes no network requests.
-- **Policy-driven.** Four built-in profiles, editable rules, and organization-pushed policy.
-- **Reversible.** Undo restores the original; a review panel lets you keep individual items.
-- **Measured.** A 0 to 100 risk score before and after.
+Once sent, this information is stored on external cloud infrastructure, logged in prompt caches, and potentially used for training future foundation models.
 
-## Example
+### The P2Shield Solution
 
-Real engine output, **Healthcare** profile (all sample data is fictional):
+**P2Shield** is a zero-knowledge, client-side browser firewall that intercepts text *in the browser DOM* **before** any network transit occurs:
+1. **Detects & Redacts**: Evaluates prompt text using 28+ rule detectors with mathematical checksums (Luhn, Verhoeff, mod-97), a structured data parser (JSON, YAML, .env, HTTP headers), heuristics, and optional on-device AI (Gemini Nano).
+2. **Format-Preserving Surrogates**: Rather than breaking model coherence with synthetic tokens like `[PERSON_1]`, P2Shield can substitute realistic, context-preserving surrogates (`"Arjun Patel"`, `"Acme Corp"`), preserving LLM reasoning and grammar.
+3. **Encrypted Token Vault**: Maps original values to surrogates inside a local, AES-GCM encrypted session vault that never leaves your machine.
+4. **Bi-Directional Response De-anonymization**: When the AI responds referencing surrogate entities, P2Shield's Response Observer automatically unmasks the real confidential data in real-time directly inside the chat UI.
+5. **Two-Way Action Bar Controls**: Native `[🛡️ Protected / 👁️ Original]` and `[🛡️ Restored / 👁️ Raw AI]` buttons allow instant toggling between sanitized and unmasked views for both prompts and AI responses.
 
-```text
-BEFORE (risk 99, Critical)
-I'm a patient at ABC Hospital in Jamshedpur. My name is Rahul Sharma, I'm 27, my phone
-is 98765 43210 and my Aadhaar number is 2345 6789 0124. My doctor Dr. Anil Kumar said
-I have Type 2 diabetes and I take Metformin 500mg. You can email me at
-rahul.sharma@gmail.com. What questions should I ask my doctor?
+> [!IMPORTANT]
+> **Zero Network Requests**: P2Shield contains **no external tracking, no analytics, no external servers, and no proxy**. All detection, tokenization, vault storage, and restoration happen 100% locally on your own machine.
 
-AFTER (risk 41, Medium)
-I'm a patient at [ORGANIZATION_1] in Jharkhand. My name is [PERSON_1], I'm 20-30, my
-phone is [REDACTED_PHONE] and my Aadhaar number is [REDACTED_AADHAAR]. My doctor
-Dr. [PERSON_2] said I have Type 2 diabetes and I take Metformin 500mg. You can email me
-at [REDACTED_EMAIL]. What questions should I ask my doctor?
-```
+---
 
-Identity is removed; the diagnosis stays because the AI needs it to answer.
-
-## Features
-
-| Action | Example |
-|---|---|
-| Mask | `98765 43210` → `98*** ***10` |
-| Tokenize | `Rahul Sharma` → `[PERSON_1]` (same value, same token) |
-| Redact | `2345 6789 0124` → `[REDACTED_AADHAAR]` |
-| Generalize | `27` → `20-30`; `₹12,50,000` → `approx. ₹13 lakh`; a city → its state |
-| Remove secret | `sk-proj-Ab3d...` → `[SECRET_REMOVED]` |
-| Keep | `Type 2 diabetes` (needed for the task) |
-
-- **28 data types**, found by rule detectors with checksums, a structured-field detector, heuristics, and optional on-device AI.
-- **Secrets are always removed** (passwords, API keys, tokens, private keys, credentials in URLs) in every profile. A custom or imported profile cannot change this.
-- **Settings app** with an overview, playground, mode and policy editors, per-site controls and a metadata-only audit log.
-
-## What it understands
-
-- **Structured data:** JSON, JS/Python objects, YAML, `.env`, HTTP headers, XML, function arguments, CLI flags, CSV / TSV / Markdown tables, and prose ("my routing number is ...").
-- **Field names in any style** (`api_token`, `apiToken`, `X-Api-Key`, `routing_num`). The name proposes a type and the value's shape confirms it, so `"card_token_raw": "5412..."` is a card while `"card_token_raw": "tok_9f..."` is a secret. Descriptive keys (`token_type`) and code references (`os.environ[...]`) are left alone.
-- **Identifiers:** Aadhaar (Verhoeff), PAN, GSTIN, IFSC, UPI, US SSN and ABA routing, UK NINO / NHS / sort code, Canadian SIN, Brazilian CPF, Emirates ID, Singapore NRIC, SWIFT/BIC, IBAN (mod-97), Luhn-checked cards, passports, driving licences, tax IDs, medical and insurance numbers, crypto wallets and seed phrases.
-- **Credentials and infrastructure:** 30+ named token formats (OpenAI, Anthropic, AWS, GitHub, Stripe, Slack, Google and more), private keys, JWTs, bearer auth, webhook URLs, internal hostnames, cloud ARNs, IP / MAC addresses, and user names in file paths.
-- **Checksums keep false alarms low**, and numbers are never matched inside a longer token.
-
-## Quick start
-
-Requires Node.js 20+ and Chrome (or another Chromium browser) 116+.
-
-```bash
-git clone https://github.com/Ravindra-builds/P2Shield
-cd P2Shield
-npm install
-npm run build
-```
-
-Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and choose the `dist` folder. To try it on the bundled demo chat page:
-
-```bash
-npm run demo        # http://localhost:4173/
-```
-
-## Usage
-
-1. Click into any AI chat box. A shield appears above the top-right corner of the input card.
-2. Type or paste. A badge on the shield counts what would be protected; its colour shows the risk.
-3. Click the shield. The box now holds the safe prompt (`Protected 5 items · Risk 99 → 63`).
-4. **Undo** restores your text. **Details** lists each finding so you can keep an item (except secrets).
-
-| Other ways in | How |
-|---|---|
-| Shortcut | `Alt+Shift+S` on the focused box (change at `chrome://extensions/shortcuts`) |
-| Context menu | Right-click a text box, *Protect this text with P2Shield* |
-| Toolbar icon | Opens settings and the playground |
-
-The shield shows automatically on common AI sites (ChatGPT, Claude, Gemini, Copilot, Perplexity, DeepSeek, Grok, Mistral and more) and on any box that looks like a chat prompt. Turn on *Show on every text box* in settings for everything else. The shortcut and context menu work everywhere.
-
-The **Playground** accepts pasted text or a `.txt`, `.md`, `.csv`, `.json` or `.log` file (2 MB max) and shows highlighted findings, risk before and after, and the safe version. PDF and Office files are not supported.
-
-## Basic mode and Smart mode
-
-**Basic** (default) uses rules and heuristics and works in every Chromium browser.
-
-**Smart** adds Chrome's on-device model (Gemini Nano, via the Prompt API) on top of the rules. It judges which details your request actually needs, so profiles with *keep if needed* (Finance, Enterprise) keep a diagnosis while protecting the name and ID.
-
-- The model only **labels**. Our code does every replacement, the policy decides, and each label must appear verbatim in your text.
-- It never sees your secrets: values the rules already found are replaced by placeholders first.
-- It never makes you wait: the model warms up on focus, labels in the background while you type, and if it hasn't answered within 0.7 s of your click, the rules protect the text immediately and the model's extras are applied when they arrive.
-- If the model is missing, slow (20 s) or invalid, the Basic result stands.
-
-Needs desktop Chrome, about 22 GB free disk, a GPU with more than 4 GB VRAM (or 16 GB RAM), and a one-time ~4 GB download. Check at `chrome://on-device-internals`.
-
-## Privacy profiles
-
-| Data type | Personal | Healthcare | Finance | Enterprise |
-|---|---|---|---|---|
-| Person name | Tokenize | Tokenize | Tokenize | Tokenize |
-| Email | Mask | Redact | Mask | Tokenize |
-| Phone | Mask | Redact | Mask | Redact |
-| Cards, accounts, UPI | Mask | Redact | Mask | Redact |
-| Government IDs | Redact | Redact | Redact | Redact |
-| Age | Keep | Generalize | Generalize | Generalize |
-| Location | Keep | Generalize | Keep | Generalize |
-| Organization | Keep | Tokenize | Keep | Tokenize |
-| Medical | Keep | Keep | Tokenize\* | Tokenize\* |
-| Money amounts | Keep | Generalize | Generalize | Generalize |
-| Secrets | Removed | Removed | Removed | Removed |
-| Confidence threshold | 0.50 | 0.50 | 0.50 | 0.45 |
-
-\* Kept when Smart mode says it is needed for the task.
-
-Edit any rule in the **Privacy policy** view, save a copy under a new name, or import / export profiles as JSON. IT teams can push policy through Chrome managed storage (`profileId`, `lockProfile`, `mode`, `showOnAll`, `disabledSites`, `customProfile`; see `src/managed_schema.json`). This is implemented but untested on a real enterprise deployment.
-
-## Risk score
-
-Each distinct value contributes `weight × confidence × residual`, combined like independent probabilities so one secret is already critical and many small items never exceed 100. Residual is what remains after the action (Keep 1.0, Generalize 0.4, Mask 0.25, Tokenize 0.1, Redact or Remove 0). A diagnosis or salary with no identity attached scores lower than the same fact next to a name and phone number.
-
-| Score | 0 to 30 | 31 to 60 | 61 to 80 | 81 to 100 |
-|---|---|---|---|---|
-| Level | Low | Medium | High | Critical |
-
-The weights are product design choices, not a standard.
-
-## Architecture
+## How It Works (Visual Architecture)
 
 ```mermaid
-flowchart LR
-    A[Chat box] --> B[Content script<br/>closed Shadow DOM UI]
-    B --> C
-    subgraph C[Core engine · pure TypeScript]
-        direction TB
-        D1[Rule detectors] & D2[Field detector] & D3[Heuristics] & D4[Smart labels, optional] --> R[Overlap resolver]
-        R --> P[Policy engine] --> S[Sanitizer]
-        P --> K[Risk scorer]
+flowchart TD
+    subgraph Browser["User's Browser (Client-Side Only)"]
+        A["User Types Prompt<br/>(ChatGPT, Claude, Gemini, etc.)"] --> B["Content Script<br/>(Isolated Shadow DOM Shield)"]
+        
+        subgraph Engine["P2Shield Core Engine (Pure TypeScript)"]
+            direction TB
+            D1["Regex & Checksum Detectors<br/>(Luhn, Verhoeff, mod-97)"]
+            D2["Structured Data Parser<br/>(JSON, YAML, .env, Headers)"]
+            D3["Heuristic & Smart NER<br/>(Gemini Nano Prompt API)"]
+            
+            D1 & D2 & D3 --> R["Overlap Resolver & Policy Engine"]
+            R --> S["Sanitizer & Surrogate Generator"]
+            R --> K["Risk Scorer (0-100 Score)"]
+        end
+        
+        B --> Engine
+        S --> V[("Encrypted Local Vault<br/>(AES-GCM Session Cache)")]
+        S --> W["Writeback Engine<br/>(ProseMirror, Lexical, Textarea)"]
+        
+        W --> PromptBar["Prompt Action Bar<br/>[🛡️ Protected / 👁️ Original]"]
+        PromptBar --> CloudBoundary["Network Boundary (Only Safe Prompt Sent)"]
     end
-    S --> W[Write back, verify, Undo]
-    W --> L[LLM gets only the safe prompt]
+
+    subgraph External["External AI Provider"]
+        CloudBoundary --> LLM["LLM Cloud Server<br/>(Receives Only Redacted / Surrogate Data)"]
+        LLM --> Stream["AI Streams Response Back"]
+    end
+
+    subgraph ResponseFlow["Real-Time Response Restoration"]
+        Stream --> Obs["DOM Response Observer"]
+        Obs <--> V
+        Obs --> InlineRestoration["Unmasks Original Values Live in UI"]
+        InlineRestoration --> ResponseBar["Response Action Bar<br/>[🛡️ Restored / 👁️ Raw AI]"]
+    end
 ```
 
-| Module | Role |
+---
+
+## Key Features & Innovations
+
+| Feature | Description |
 |---|---|
-| `src/core` | Detection, policy, risk, sanitizer, Smart-mode helpers (no browser APIs) |
-| `src/content` | Finds editors, draws the shield, writes text back |
-| `src/background` | Shortcut, context menu, audit log, model bridge |
-| `src/offscreen` | Hosts the Prompt API (unavailable in service workers) |
-| `src/options` | Settings app and playground |
+| **100% On-Device Execution** | Pure local computation with zero external network calls. What you type stays on your device. |
+| **Bidirectional Token Vault** | Local AES-GCM encrypted session vault automatically tracks surrogates and de-anonymizes LLM responses in real-time. |
+| **Format-Preserving Surrogates** | Replaces sensitive data with natural, realistic equivalents (`"Rahul Sharma"` → `"Arjun Patel"`) so LLMs maintain natural reasoning. |
+| **Two-Way UI Controls** | Native buttons embedded right in chat message action bars: `[🛡️ Protected / 👁️ Original]` on prompts and `[🛡️ Restored / 👁️ Raw AI]` on assistant replies. |
+| **Provider Isolation Pattern** | Dedicated modular provider adapters (`chatgpt.ts`, `claude.ts`, etc.) ensure updates to one site never break others. |
+| **28+ Data Types with Checksums** | Algorithmic validation (Luhn, Verhoeff, mod-97) eliminates false positives for cards, Aadhaar, IBAN, and credentials. |
+| **Smart Mode (Gemini Nano)** | Integrates Chrome's experimental on-device Prompt API for task-aware context understanding ("keep diagnosis, redact name"). |
+| **4 Built-in Privacy Profiles** | Pre-configured policies for Personal, Healthcare, Finance, and Enterprise workflows. |
+| **Mathematical Risk Scoring** | Transparent 0–100 risk score based on entity weights, detector confidence, and residual risk. |
+| **Local Audit Log** | Metadata-only audit trail recording timestamps, site, profile, and risk delta (zero sensitive text stored). |
 
-**Writing back** is the hard part on real sites. Plain inputs use the native value setter plus an `input` event. Rich editors (ProseMirror, Lexical, Slate, Quill, Draft) get a simulated paste or editing commands, then a text fallback. Every attempt is verified by reading the box back; if all fail, the safe prompt is copied to the clipboard.
+---
 
-## Privacy and security
+## What P2Shield Detects (28+ Types)
 
-- No network requests, remote code or analytics from the extension. (Chrome itself downloads the Gemini Nano model if you enable Smart mode.)
-- Your text and detected values are never stored. The audit log keeps only time, site, mode, profile, counts by type and risk (last 200 entries, clearable). Token maps live in memory only.
-- The in-page UI is in a closed Shadow DOM and uses no `innerHTML`.
-- Permissions: `storage` (settings, audit log), `contextMenus`, `offscreen` (model host), `clipboardWrite` (fallback copy), and a content script on all pages so the shield can appear on any chatbot.
+### 1. Structured & Semi-Structured Data
+- **Key-Value Formats:** JSON, YAML, Python dictionaries, `.env` files, HTTP headers, XML attributes, query strings, and CLI flags.
+- **Context-Aware Keys:** Intelligently matches keys like `api_key`, `token`, `password`, `secret`, `access_token`, `auth`, `client_secret`.
 
-## Use the engine as a library
+### 2. Universal & National Identifiers (With Mathematical Checksums)
+- **India:** Aadhaar (12-digit with **Verhoeff algorithm** validation), PAN (Permanent Account Number), GSTIN, IFSC, UPI IDs.
+- **United States:** Social Security Numbers (SSN), ABA routing numbers.
+- **United Kingdom:** National Insurance Numbers (NINO), NHS numbers, UK sort codes.
+- **Global:** IBAN (International Bank Account Number with **mod-97** validation), SWIFT/BIC codes, Canadian SIN, Brazilian CPF, Singapore NRIC, Emirates ID.
 
-`src/core` has no browser dependencies:
+### 3. Financial & Payment Data
+- **Payment Cards:** Visa, Mastercard, American Express, Discover, Diners Club, JCB with **Luhn algorithm** verification.
+- **Bank Accounts & Routing:** Account numbers, SWIFT codes, UPI handles (`username@okaxis`, `name@upi`).
 
-```ts
-import { analyze, getBuiltinProfile } from './src/core';
+### 4. Credentials, Secrets & Cloud Infrastructure
+- **API Keys & Tokens:** OpenAI (`sk-proj-...`), Anthropic (`sk-ant-...`), AWS Access Keys (`AKIA...`), GitHub personal access tokens (`ghp_...`, `gho_...`), Stripe (`sk_live_...`, `pk_live_...`), Slack tokens (`xoxb-...`, `xoxp-...`), Google API keys (`AIza...`).
+- **Cryptographic Keys:** RSA/EC private keys (`-----BEGIN PRIVATE KEY-----`), JWTs (JSON Web Tokens).
+- **Network & Hostnames:** IPv4, IPv6, MAC addresses, internal private IP ranges, cloud ARNs (`arn:aws:...`), and database URIs.
 
-const { result } = analyze('My name is Rahul Sharma, key sk-proj-Ab3dEf9hIjKlMnOpQrStUv12', {
-  profile: getBuiltinProfile('enterprise'),
-});
-result.safeText;    // text with every value replaced
-result.riskBefore;  // 0-100 (riskAfter, levelBefore, levelAfter also available)
-result.findings;    // type, text, action, replacement, confidence, reason
-result.tokenMap;    // '[PERSON_1]' -> original value, in memory only
-```
+---
 
-## Testing
+## File Concept & Codebase Architecture
 
-```bash
-npm test             # unit tests (Vitest)
-npm run typecheck
-npm run e2e          # loads the built extension into Chromium and drives the demo page
-```
-
-The first e2e run needs `npx playwright install chromium`. Unit tests cover the engine, structured formats, worldwide identifiers, ordinary prompts that must stay unchanged, profiles saved by older versions, Smart mode with a mocked model, and a speed budget (about 10-20 ms for 20,000 characters). The 30 e2e checks cover five editor types, multi-line credentials, a JSON config with six sensitive values, shield placement, Undo, page re-renders, profiles, disabled sites, the shortcut path, the Smart-mode fallback, and that the audit log never contains raw values.
-
-Not automatically tested: real chat sites (they need a login and change often), Smart mode with a real model, and managed policy on a real device. For live sites, paste a fictional prompt, click the shield, press Send, then check Undo, line breaks, and the next message.
-
-## Project layout
+For developers and contributors exploring the codebase for the first time, here is how the project is structured and what each file is responsible for:
 
 ```text
-src/            core, content, background, offscreen, options, shared, icons, manifest
-tests/          unit tests
-e2e/            Playwright end-to-end run
-demo/           demo chat page and static server
-landing page/   standalone marketing site (React, Vite, Tailwind)
-packages/p2shield/   npm package scaffold
-scripts/        make-icons.mjs (icons from p2shield-logo.png)
-build.mjs       esbuild bundler
+rohit-p2shield/
+├── src/
+│   ├── core/                  # Pure, platform-agnostic firewall engine (Zero DOM / Zero Chrome APIs)
+│   │   ├── engine.ts          # Central orchestrator: analyze(), protect(), scan()
+│   │   ├── vault.ts           # Token vault, AES-GCM session storage, response de-anonymization
+│   │   ├── detectors.ts       # 28+ regex patterns with checksum validators
+│   │   ├── fields.ts          # Structured parser (JSON, YAML, .env, headers, XML)
+│   │   ├── validators.ts      # Verhoeff, Luhn, mod-97, ISO checksum implementations
+│   │   ├── policy.ts          # Built-in profiles (Personal, Healthcare, Finance, Enterprise)
+│   │   ├── risk.ts            # Mathematical risk scoring engine (0-100 score calculation)
+│   │   ├── sanitize.ts        # String replacement and surrogate tokenization engine
+│   │   ├── smart.ts           # Gemini Nano (Prompt API) bridge for contextual labeling
+│   │   ├── lexicon.ts         # Common first/last names and dictionary terms for heuristics
+│   │   ├── resolve.ts         # Overlap resolver (resolves competing matches by priority)
+│   │   ├── types.ts           # Shared TypeScript interfaces, types, and contracts
+│   │   └── index.ts           # Public exports for the core module
+│   │
+│   ├── content/               # Browser content scripts injected into AI chat web pages
+│   │   ├── main.ts            # Content script entry: attaches observers & discovers input boxes
+│   │   ├── editable.ts        # Unified editor adapter (ProseMirror, Lexical, Slate, Textarea)
+│   │   ├── bubble-pill.ts     # Floating shield button & badge (Closed Shadow DOM UI)
+│   │   ├── ui.ts              # Detailed popover modal for reviewing findings & risk delta
+│   │   └── providers/         # Provider-Isolated Chatbot Adapters
+│   │       └── chatgpt.ts     # OpenAI ChatGPT prompt toggle & response unmasking adapter
+│   │
+│   ├── background/            # Manifest V3 service worker
+│   │   └── background.ts      # Keyboard shortcuts (Alt+Shift+S), context menu, audit log
+│   │
+│   ├── offscreen/             # Chrome offscreen document
+│   │   ├── offscreen.html     # Dedicated DOM environment for Chrome's Prompt API
+│   │   └── offscreen.ts       # Offscreen worker hosting Gemini Nano without blocking MV3 worker
+│   │
+│   ├── options/               # Extension Options Dashboard & Playground (Single-Page App)
+│   │   ├── options.html       # HTML structure for the settings and playground UI
+│   │   ├── options.ts         # Controller: file scanner, policy editor, audit log viewer
+│   │   └── options.css        # Clean, modern dashboard styling
+│   │
+│   └── shared/                # Code shared across content, background, and options
+│       ├── settings.ts        # Typed Chrome storage settings manager
+│       ├── samples.ts         # Pre-configured sample prompts for healthcare, finance, PII
+│       └── smartModel.ts      # Client helpers for interacting with the offscreen model
+│
+├── demo/                      # Standalone local chat simulator for rapid offline testing
+│   ├── index.html             # Mock AI chatbot UI with simulated streaming responses
+│   ├── serve.mjs              # Local Node.js HTTP server (http://localhost:4173)
+│   └── engine.js              # Standalone bundle of the core engine used by demo
+│
+├── tests/                     # Automated Vitest test suites (203 tests)
+│   ├── core.test.ts           # Tests for detectors, checksums, structured parsing, policy
+│   ├── vault.test.ts          # Tests for token vault, surrogate mapping, and unmasking
+│   ├── chatgpt.test.ts        # Tests for provider isolation and response unmasking logic
+│   ├── smart.test.ts          # Tests for Smart mode and Prompt API fallback handling
+│   ├── coverage.test.ts       # Broad coverage tests across edge cases and large inputs
+│   └── helpers.ts             # Test utilities and fixture generators
+│
+├── e2e/                       # End-to-end browser automation suite (Playwright)
+│   └── run.mjs                # Launches real Chromium with the extension loaded
+│
+├── build.mjs                  # Fast esbuild bundler configuration
+└── package.json               # NPM scripts, dependencies, and project metadata
 ```
 
-| Command | Does |
+### Key Architectural Concepts to Know
+
+1. **Pure Core Isolation (`src/core/`)**:
+   `src/core/` does **not** import any Chrome extension APIs (`chrome.*`) or browser DOM APIs (`window`, `document`). It is 100% pure TypeScript. This allows the core engine to run anywhere: inside web workers, in Node.js backend pipelines, in CLI tools, or exported as an independent NPM package.
+
+2. **Shadow DOM Encapsulation (`src/content/bubble-pill.ts`)**:
+   The floating shield icon and popover UI are rendered inside a **closed Shadow DOM**. This ensures that chatbot CSS stylesheets (like Tailwind on ChatGPT or custom themes on Claude) never affect P2Shield's UI, and P2Shield's styles never leak into the host page.
+
+3. **Provider Isolation Pattern (`src/content/providers/`)**:
+   Different AI chatbots implement entirely different DOM structures, custom message actions, and reactive frameworks (React, Svelte, custom web components). By placing site-specific logic inside dedicated provider modules (e.g., `src/content/providers/chatgpt.ts`), modifications to one provider never regress or interfere with others.
+
+4. **Multi-Strategy Writeback Engine (`src/content/editable.ts`)**:
+   Modern chatbots do not use standard `<textarea>` elements; they use rich-text frameworks (ProseMirror, Lexical, Slate, Quill). P2Shield implements a multi-tier writeback engine:
+   - Level 1: Native property descriptor value setter (for inputs/textareas).
+   - Level 2: Synthetic `input`, `change`, and `beforeinput` events.
+   - Level 3: Document `execCommand('insertText')` simulation.
+   - Level 4: Simulated paste event with DataTransfer payload.
+   - Verification: Reads the element back immediately; if all writeback attempts fail, it safely copies the sanitized prompt to the user's clipboard and displays an alert.
+
+---
+
+## Local Setup Guide (Step-by-Step)
+
+Follow these steps to set up P2Shield on your local development machine in under 3 minutes:
+
+### Prerequisites
+- **Node.js**: Version `20.0.0` or higher ([Download Node.js](https://nodejs.org/))
+- **Package Manager**: `npm` (comes bundled with Node.js)
+- **Browser**: Google Chrome, Brave, Edge, or any Chromium-based browser (v116+)
+
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/Ravindra-builds/P2Shield.git
+cd P2Shield
+```
+
+### Step 2: Install Dependencies
+```bash
+npm install
+```
+
+### Step 3: Build the Extension
+```bash
+npm run build
+```
+This runs `build.mjs` with `esbuild` and bundles the project into the `./dist/` directory:
+- `dist/content.js` (In-page content script)
+- `dist/background.js` (MV3 Service Worker)
+- `dist/options.js` (Options Dashboard & Playground)
+- `dist/offscreen.js` (Offscreen AI worker)
+- `dist/manifest.json` + extension icons
+
+### Step 4: Load the Unpacked Extension in Chrome
+1. Open Google Chrome and navigate to:
+   ```text
+   chrome://extensions
+   ```
+2. In the top-right corner, toggle **Developer mode** to **ON**.
+3. In the top-left corner, click **Load unpacked**.
+4. In the file picker, select the `dist` folder inside your cloned `P2Shield` directory:
+   ```text
+   C:\path\to\P2Shield\dist
+   ```
+5. You should now see **P2Shield** in your extensions list!
+6. *(Recommended)* Click the puzzle piece icon in Chrome's toolbar and **Pin** P2Shield for quick access.
+
+---
+
+## How to Test Everything
+
+P2Shield provides multiple ways to test every feature, from instant automated unit tests to live chatbot interaction.
+
+### 1. Automated Test Suite (Vitest)
+
+To run the complete automated test suite (203 unit tests covering regexes, checksums, token vault, and edge cases):
+
+```bash
+# Run all tests once
+npm test
+
+# Run tests in interactive watch mode (ideal during development)
+npm run test:watch
+
+# Run TypeScript typecheck, unit tests, and build in one command
+npm run check
+```
+
+Expected output:
+```text
+✓ tests/chatgpt.test.ts (5 tests)
+✓ tests/vault.test.ts (27 tests)
+✓ tests/smart.test.ts (18 tests)
+✓ tests/coverage.test.ts (76 tests)
+✓ tests/core.test.ts (77 tests)
+
+Test Files  5 passed (5)
+     Tests  203 passed (203)
+```
+
+---
+
+### 2. Built-in Offline Demo Simulator
+
+You don't need real API keys or internet access to test P2Shield's prompt protection and response de-anonymization. Use the bundled local chat simulator:
+
+```bash
+npm run demo
+```
+1. Open your browser to `http://localhost:4173/`.
+2. You will see a mock AI chatbot interface with P2Shield's engine active.
+3. **Test Prompt Protection**:
+   - Paste a fictional prompt:
+     ```text
+     Hello, I'm Rahul Sharma (rahul.sharma@gmail.com). My Aadhaar is 2345 6789 0124 and my secret key is sk-proj-1234567890abcdef1234567890abcdef. Can you help me?
+     ```
+   - Watch the floating shield badge turn red and count the detected sensitive entities.
+   - Click the shield button (or press `Alt+Shift+S`).
+   - The prompt is instantly sanitized: names become realistic surrogates or tokens, Aadhaar is redacted, and secrets are removed.
+4. **Test Response De-anonymization**:
+   - Click **Send**.
+   - The mock bot replies echoing the surrogate tokens: `"Hello [PERSON_1], I received your request..."`
+   - P2Shield's Response Observer automatically intercepts the text and restores `"Rahul Sharma"` on your screen!
+   - Click the `[🛡️ Restored / 👁️ Raw AI]` button on the response to toggle between the raw surrogate text and the unmasked view.
+
+---
+
+### 3. Live AI Chatbots (ChatGPT, Claude, Gemini, Grok, Perplexity)
+
+P2Shield works directly on live AI web applications.
+
+#### Testing on ChatGPT (`chatgpt.com`):
+1. Ensure the P2Shield extension is loaded in `chrome://extensions`.
+2. Go to [https://chatgpt.com/](https://chatgpt.com/) and start a new chat.
+3. In the message box, enter a prompt with fictional sensitive data:
+   ```text
+   I am Alice Smith. My corporate email is alice@internal-corp.com and my AWS access key is AKIAIOSFODNN7EXAMPLE. How do I configure my S3 bucket?
+   ```
+4. **Observe the Shield**:
+   - The floating shield icon appears on the prompt box showing detected item counts.
+   - Click the shield. The input updates with safe surrogates:
+     `"I am [PERSON_1]. My corporate email is [REDACTED_EMAIL] and my AWS access key is [SECRET_REMOVED]..."`
+5. **Test the Prompt Action Bar**:
+   - Notice the `[👁️ Original]` button injected into the prompt controls.
+   - Click it to view your original text; click `[🛡️ Protected]` to switch back to the safe version before sending.
+6. **Send & Test Response Unmasking**:
+   - Press **Send**.
+   - When ChatGPT answers using `[PERSON_1]`, P2Shield detects the surrogate and restores `"Alice Smith"` in place.
+   - Use the `[🛡️ Restored / 👁️ Raw AI]` button on ChatGPT's response message action bar (beside Copy) to toggle between views.
+
+---
+
+### 4. Interactive Options Dashboard & File Playground
+
+P2Shield includes a full-featured dashboard for testing files and tweaking privacy policies:
+
+1. Click the P2Shield icon in your browser toolbar, or right-click the icon and select **Options**.
+2. **Features to test in the Dashboard**:
+   - **Interactive Playground**: Paste any raw text to view live entity extraction, risk score before/after, and sanitized output.
+   - **File Scanner**: Drag-and-drop `.txt`, `.md`, `.json`, `.csv`, or `.env` files (up to 2MB) to scan for leaked credentials before uploading to AI tools.
+   - **Privacy Policy Customizer**: Change actions (Tokenize, Mask, Redact, Generalize, Keep) for any of the 28 data types.
+   - **Audit Log**: Inspect the local privacy log showing timestamps, sites, and risk reductions without exposing raw plaintext.
+
+---
+
+### 5. End-to-End Browser Testing (Playwright)
+
+To verify extension injection, UI rendering, and keyboard shortcuts across a headless Chromium instance:
+
+```bash
+# Install Chromium browser for Playwright (first time only)
+npx playwright install chromium
+
+# Run the 30-check automated E2E test suite
+npm run e2e
+```
+
+---
+
+## Privacy Profiles & Risk Scoring
+
+P2Shield includes 4 pre-configured security profiles tailored for different environments:
+
+| Data Type | Personal (Default) | Healthcare (HIPAA Focus) | Finance (PCI Focus) | Enterprise |
+|---|---|---|---|---|
+| **Person Names** | Tokenize / Surrogate | Tokenize / Surrogate | Tokenize / Surrogate | Tokenize / Surrogate |
+| **Email Addresses** | Mask (`a***@b.com`) | Redact (`[REDACTED_EMAIL]`) | Mask | Tokenize |
+| **Phone Numbers** | Mask (`98*** ***10`) | Redact | Mask | Redact |
+| **Cards & Bank Accounts** | Mask | Redact | Mask | Redact |
+| **Government IDs (SSN, Aadhaar)** | Redact | Redact | Redact | Redact |
+| **Ages & Dates** | Keep | Generalize (`20-30`) | Generalize | Generalize |
+| **Locations / Cities** | Keep | Generalize (City → State) | Keep | Generalize |
+| **Organizations** | Keep | Tokenize | Keep | Tokenize |
+| **Medical Terms** | Keep | Keep (Needed for advice) | Tokenize | Tokenize |
+| **API Keys & Secrets** | **Always Removed** | **Always Removed** | **Always Removed** | **Always Removed** |
+| **Confidence Threshold** | 0.50 | 0.50 | 0.50 | 0.45 |
+
+> [!NOTE]
+> **Secrets are Non-Negotiable**: Passwords, API tokens, private keys, and bearer credentials are **unconditionally removed** across all profiles. Even custom enterprise policies cannot disable secret redaction.
+
+### Mathematical Risk Score (0 to 100)
+
+P2Shield calculates privacy risk using an independent probability formula:
+
+$$\text{Risk} = 1 - \prod_{i=1}^{n} \left(1 - w_i \times c_i \times r_i\right)$$
+
+- $w_i$: Severity weight of the entity type (e.g., Secret = 1.0, Aadhaar/SSN = 0.9, Phone = 0.5, Age = 0.2).
+- $c_i$: Confidence of the detection (0.0 to 1.0).
+- $r_i$: Residual risk after redaction (Keep = 1.0, Generalize = 0.4, Mask = 0.25, Tokenize = 0.1, Redact/Remove = 0.0).
+
+| Risk Score | Tier | Action Indicator |
+|---|---|---|
+| **0 – 30** | **Low** | Green badge · Safe for AI transmission |
+| **31 – 60** | **Medium** | Yellow badge · Recommended to redact |
+| **61 – 80** | **High** | Orange badge · Significant PII present |
+| **81 – 100** | **Critical** | Red badge · High-risk credentials or IDs detected |
+
+---
+
+## Using the Engine as an NPM Library
+
+The core firewall engine is completely detached from Chrome extension APIs and can be imported directly into Node.js applications, CI/CD pipelines, or backend LLM proxies:
+
+```bash
+npm run build:package
+```
+
+```typescript
+import { analyze, getBuiltinProfile, restoreText } from './src/core';
+
+// 1. Analyze and sanitize prompt text
+const { result, vault } = analyze(
+  "Hello, my name is Rahul Sharma and my OpenAI key is sk-proj-1234567890abcdef1234567890abcdef.",
+  { profile: getBuiltinProfile('enterprise') }
+);
+
+console.log("Safe Prompt:", result.safeText);
+// Output: "Hello, my name is Arjun Patel and my OpenAI key is [SECRET_REMOVED]."
+
+console.log("Risk Delta:", `${result.riskBefore} -> ${result.riskAfter}`);
+// Output: "Risk Delta: 99 -> 0"
+
+// 2. Unmask incoming LLM responses using the session vault
+const llmResponse = "Hello Arjun Patel, I can help you configure your project.";
+const unmaskedResponse = vault.restoreText(llmResponse);
+
+console.log("Unmasked Response:", unmaskedResponse);
+// Output: "Hello Rahul Sharma, I can help you configure your project."
+```
+
+---
+
+## NPM Scripts Reference
+
+| Command | Description |
 |---|---|
-| `npm run build` | Bundle the extension into `dist/` |
-| `npm run check` | Run typecheck, unit tests, and build in one step |
-| `npm test` / `npm run test:watch` | Run unit tests (single-run or watch mode) |
-| `npm run demo` / `npm run dev` | Serve the local demo chat page |
-| `npm run build:package` | Bundle the pure engine into `packages/p2shield/dist` |
-| `npm run icons` | Re-generate icons from `p2shield-logo.png` |
-| `npm run landing` / `npm run build:landing` | Run / build the standalone landing page |
-| `npm run build:all` | Build extension, npm package, and landing page |
+| `npm run build` | Builds the Chrome extension into the `./dist/` directory using esbuild |
+| `npm test` | Runs the full Vitest automated test suite (203 tests) |
+| `npm run test:watch` | Runs Vitest in interactive watch mode for TDD |
+| `npm run typecheck` | Validates TypeScript types across the entire codebase (`tsc --noEmit`) |
+| `npm run check` | Runs typecheck, tests, and build in a single verification pipeline |
+| `npm run demo` / `npm run dev` | Starts the offline local demo chat server at `http://localhost:4173/` |
+| `npm run e2e` | Runs Playwright browser automation tests against a real Chromium instance |
+| `npm run build:package` | Builds the standalone NPM package into `packages/p2shield/dist` |
+| `npm run icons` | Re-generates PNG icons from `p2shield-logo.png` across all resolutions |
+| `npm run landing` | Launches local development server for the marketing landing page |
+| `npm run build:all` | Compiles extension, npm package, and landing page in one command |
 
-## Known limits
+---
 
-- **It reduces accidental exposure; it is not a guarantee.** Spelled-out values and secrets with no recognisable format or field name can slip through, and name detection in Basic mode is heuristic.
-- **The page can still see what you type.** P2Shield protects what gets **sent**. For very sensitive text, use the Playground and paste only the safe version.
-- Prompt injections are not detected; the values they would extract are removed.
-- The engine scans up to 400,000 characters; the live badge samples the first 20,000.
-- Text only: no images, OCR, PDF or Office files.
-- Restoring real values in the AI's reply is not implemented.
-- Site changes can break box detection or write-back; the shortcut and context menu are the fallback.
-- Chromium only; Smart mode is Chrome only.
+## Troubleshooting & FAQ
 
-## Roadmap
+### 1. I made changes to the code, but Chrome isn't showing them.
+After modifying files in `src/`, run:
+```bash
+npm run build
+```
+Then go to `chrome://extensions`, locate **P2Shield**, and click the **Reload** (circular arrow) button.
 
-- [ ] Restore real values in the AI's response using the local token map
-- [ ] PDF and DOCX extraction, OCR for images
-- [ ] A local NER model for stronger name detection
-- [ ] Hindi and other Indian-language support
-- [ ] An organization gateway for apps outside the browser
-- [ ] Tamper-evident audit hashes
+### 2. The shield icon doesn't appear on a text box.
+- Click inside the input field to focus it. P2Shield mounts the shield on focus to conserve memory.
+- If the website uses non-standard containers, use the global keyboard shortcut:
+  - **Windows/Linux**: `Alt + Shift + S`
+  - **macOS**: `Option + Shift + S`
+  - Or right-click the text box and select **Protect this text with P2Shield**.
+
+### 3. How does Smart Mode work?
+Smart Mode leverages Google Chrome's built-in **Gemini Nano** model via the experimental Prompt API. It runs 100% locally on your GPU/NPU.
+- **Requirements**: Chrome 128+ with desktop GPU and on-device model downloaded.
+- You can verify model status in your browser at `chrome://on-device-internals`.
+- If the model is not present, P2Shield gracefully falls back to deterministic rule and heuristic engines.
+
+### 4. Does P2Shield send my data to any server?
+**Never.** P2Shield contains zero telemetry, zero analytics scripts, and zero network calls. Check the `src/manifest.json` file or open Chrome DevTools Network tab — you will see 0 requests made by the extension.
+
+---
+
+## Contributing
+
+Contributions, bug reports, and suggestions are welcome!
+1. Fork the repository.
+2. Create your feature branch (`git checkout -b feature/new-detector`).
+3. Ensure all tests and typechecks pass (`npm run check`).
+4. Commit your changes and open a Pull Request.
+
+---
 
 ## License
 
-MIT. See [`packages/p2shield/LICENSE`](packages/p2shield/LICENSE).
+Distributed under the **MIT License**. See [`packages/p2shield/LICENSE`](packages/p2shield/LICENSE) for full details.

@@ -18,27 +18,27 @@ function build(base: Partial<Record<EntityType, Action | PolicyRule>>): RuleMap 
 const PERSONAL: Profile = {
   id: 'personal',
   name: 'Personal',
-  description: 'Everyday use. Hides identity and account numbers, keeps the rest so answers stay useful.',
+  description: 'Everyday use. Replaces names, emails, phones, and identifiers with natural synthetic surrogates, keeping context useful.',
   threshold: 0.5,
   rules: build({
-    PERSON: 'TOKENIZE',
-    EMAIL: 'MASK',
-    PHONE: 'MASK',
-    CREDIT_CARD: 'MASK',
+    PERSON: 'SYNTHESIZE',
+    EMAIL: 'SYNTHESIZE',
+    PHONE: 'SYNTHESIZE',
+    CREDIT_CARD: 'SYNTHESIZE',
     BANK_ACCOUNT: 'MASK',
     IBAN: 'MASK',
-    UPI_ID: 'MASK',
+    UPI_ID: 'SYNTHESIZE',
     IFSC: 'REDACT',
-    AADHAAR: 'REDACT',
-    PAN: 'REDACT',
-    ID_NUMBER: 'REDACT',
+    AADHAAR: 'SYNTHESIZE',
+    PAN: 'SYNTHESIZE',
+    ID_NUMBER: 'SYNTHESIZE',
     ROUTING_NUMBER: 'MASK',
     PASSPORT: 'REDACT',
     DATE_OF_BIRTH: 'GENERALIZE',
-    IP_ADDRESS: 'REDACT',
-    EMPLOYEE_ID: 'REDACT',
+    IP_ADDRESS: 'SYNTHESIZE',
+    EMPLOYEE_ID: 'SYNTHESIZE',
     CONFIDENTIAL: 'TOKENIZE',
-    MEDICAL: 'KEEP',
+    MEDICAL: 'SYNTHESIZE',
     FINANCIAL: 'KEEP',
     AGE: 'KEEP',
     LOCATION: 'KEEP',
@@ -164,7 +164,7 @@ export function normalizeProfile(raw: unknown, fallbackId = 'custom'): Profile |
   const r = raw as Partial<Profile>;
   const base = getBuiltinProfile(typeof r.id === 'string' ? r.id : DEFAULT_PROFILE_ID);
   const rules = { ...base.rules };
-  const actions: Action[] = ['KEEP', 'MASK', 'TOKENIZE', 'REDACT', 'GENERALIZE', 'REMOVE_SECRET'];
+  const actions: Action[] = ['KEEP', 'MASK', 'TOKENIZE', 'REDACT', 'GENERALIZE', 'REMOVE_SECRET', 'SYNTHESIZE'];
   if (r.rules && typeof r.rules === 'object') {
     for (const t of ENTITY_TYPES) {
       if (DANGEROUS_KEYS.has(t as string)) continue;

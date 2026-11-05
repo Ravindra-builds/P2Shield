@@ -11,7 +11,7 @@ export const FIRST_NAMES = new Set(
   Pradeep Prakash Pranav Priya Priyanka Rachna Raghav Rahul Raj Rajesh Rajiv Rakesh Ramesh Ravi Rekha Rishi Rohan
   Rohit Ritu Sachin Sakshi Sameer Sandeep Sanjay Sanjana Sapna Sarita Saurabh Shivam Shreya Shruti Siddharth Simran
   Sneha Sonia Sonam Suman Sunil Sunita Suresh Sushil Swati Tanvi Tarun Tushar Uday Varun Vijay Vikas Vikram Vinay
-  Vinod Vishal Vivek Yash Yogesh Zoya Zara Imran Irfan Salman Faisal Farhan Fatima Aamir
+  Vinod Vishal Vivek Yash Yogesh Zoya Zara Imran Irfan Salman Faisal Farhan Fatima Aamir Ravindra
   Alice Amanda Andrew Angela Anthony Barbara Benjamin Brian Carol Charles Christopher Daniel David Deborah Donald
   Dorothy Edward Elizabeth Emily Emma Eric Frank George Helen Jacob James Jason Jennifer Jessica Joseph Joshua
   Karen Kevin Kimberly Laura Linda Lisa Margaret Mary Matthew Michael Michelle Nancy Nicholas Olivia Patricia
@@ -137,6 +137,12 @@ export const MEDICAL_CONDITIONS = [
   'radiotherapy', 'dialysis', 'allerg(?:y|ies)', 'eczema', 'psoriasis', 'ulcerative colitis', 'crohn\'?s',
   'sleep apnou?ea', 'insomnia', 'eating disorder', 'addiction', 'rehab', 'malaria', 'dengue', 'typhoid',
   'pneumonia', 'bronchitis', 'glaucoma', 'cataract', 'sickle cell', 'thalassemia', 'hemophilia',
+  'liver problem', 'liver disease', 'liver failure', 'liver infection', 'liver damage', 'liver condition',
+  'kidney problem', 'heart problem', 'lung problem', 'stomach problem', 'chest pain', 'jaundice',
+  'pancreatitis', 'gallstones?', 'kidney stones?',
+  'fever', 'high fever', 'headache', 'fatigue', 'nausea', 'vomiting', 'diarrhoea', 'diarrhea', 'constipation',
+  'sore throat', 'flu', 'influenza', 'cold and cough', 'cough', 'shortness of breath', 'vertigo', 'dizziness',
+  'rashes', 'skin rash', 'back pain', 'joint pain', 'gastritis', 'acid reflux', 'gerd', 'stomach ache',
 ];
 
 export const MEDICATIONS = [
@@ -152,3 +158,10 @@ export const MEDICATIONS = [
 export const MONTHS = new Set(
   w(`January February March April May June July August September October November December`),
 );
+
+export const FIRST_NAMES_LOWER = new Set<string>();
+for (const n of FIRST_NAMES) FIRST_NAMES_LOWER.add(n.toLowerCase());
+
+export const SURNAMES_LOWER = new Set<string>();
+for (const n of SURNAMES) SURNAMES_LOWER.add(n.toLowerCase());
+

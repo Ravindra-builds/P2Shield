@@ -63,6 +63,7 @@ export const RESIDUAL: Record<Action, number> = {
   TOKENIZE: 0.1,
   REDACT: 0,
   REMOVE_SECRET: 0,
+  SYNTHESIZE: 0.1,
 };
 
 export interface RiskItem {
